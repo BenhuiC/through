@@ -7,7 +7,6 @@ import (
 	"os/signal"
 	"through/log"
 	"through/server"
-	"time"
 )
 
 // serverCmd represents the server command
@@ -28,7 +27,7 @@ var serverCmd = &cobra.Command{
 		<-ctx.Done()
 		server.Stop()
 		log.Info("server stopping ...")
-		time.Sleep(3 * time.Second)
+		//time.Sleep(3 * time.Second)
 	},
 }
 

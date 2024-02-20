@@ -2,6 +2,7 @@ package log
 
 import (
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"through/config"
 )
 
@@ -22,6 +23,7 @@ func Init() (err error) {
 		logConfig.ErrorOutputPaths = append(logConfig.ErrorOutputPaths, cfg.LogFile)
 	}
 
+	logConfig.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
 	defLogger, err = NewLogger(zap.AddCallerSkip(1))
 	return
 }
