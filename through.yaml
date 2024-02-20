@@ -1,0 +1,12 @@
+common:
+  env: "prod"
+  logFile: ".tmp/through.log"
+
+server:
+  addr: ":8888"
+  privateKey: "cert/server.key"
+  crtFile: "cert/server.crt"
+  caFile: "cert/ca.crt"
+
+client:
+  addr: ":8889"
