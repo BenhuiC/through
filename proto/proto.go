@@ -23,6 +23,7 @@ func ReadMeta(reader io.Reader) (meta *Meta, err error) {
 		return
 	}
 
+	meta = &Meta{}
 	err = proto.Unmarshal(buf, meta)
 
 	return

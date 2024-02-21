@@ -3,10 +3,8 @@ package server
 import (
 	"context"
 	"crypto/tls"
-	"encoding/binary"
-	"encoding/json"
 	"errors"
-	"io"
+	"go.uber.org/zap"
 	"net"
 	"sync"
 	"through/config"
@@ -47,7 +45,7 @@ func (s *Server) Start() (err error) {
 	}
 	s.listener = listener
 
-	log.Info("server listen %v", cfg.Addr)
+	log.Info("server listen at %v", cfg.Addr)
 	s.wg.Add(1)
 	go s.listen(s.ctx, listener)
 
@@ -73,7 +71,8 @@ func (s *Server) listen(ctx context.Context, listener net.Listener) {
 
 		log.Info("accept connection from: %v", conn.RemoteAddr())
 
-		go doStuff(ctx, conn)
+		con := NewConnection(ctx, conn, log.NewLogger(zap.AddCallerSkip(1)))
+		go con.Process()
 	}
 }
 
@@ -83,48 +82,4 @@ func (s *Server) Stop() {
 		log.Warn("close server listener error: %v", err)
 	}
 	s.wg.Wait()
-}
-
-func doStuff(ctx context.Context, conn net.Conn) {
-	//defer conn.Close()
-
-	header := make([]byte, 4)
-	if _, err := io.ReadFull(conn, header); err != nil {
-		log.Error("reader header error: %v", err)
-		return
-	}
-
-	dataLen := binary.BigEndian.Uint32(header)
-
-	buf := make([]byte, dataLen)
-
-	if _, err := io.ReadFull(conn, buf); err != nil {
-		log.Error("reader data error: %v", err)
-		return
-	}
-
-	log.Info("receive data: %v", string(buf))
-
-	m := make(map[string]string)
-	_ = json.Unmarshal(buf, &m)
-
-	server, err := net.Dial(m["net"], m["addr"])
-	if err != nil {
-		log.Error("new dial error: %v", err)
-		return
-	}
-
-	go forward(conn, server)
-	go forward(server, conn)
-}
-
-func forward(src, dest net.Conn) {
-	defer src.Close()
-	defer dest.Close()
-	_, err := io.Copy(dest, src)
-	if err != nil {
-		log.Warn("copy connection error: %v", err)
-	}
-
-	//time.Sleep(100 * time.Second)
 }

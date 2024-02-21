@@ -24,7 +24,7 @@ func Init() (err error) {
 	}
 
 	logConfig.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
-	defLogger, err = NewLogger(zap.AddCallerSkip(1))
+	defLogger = NewLogger(zap.AddCallerSkip(1))
 	return
 }
 

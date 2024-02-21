@@ -9,12 +9,12 @@ func New(opts ...zap.Option) (l *zap.Logger, err error) {
 	return
 }
 
-func NewLogger(opts ...zap.Option) (*Logger, error) {
+func NewLogger(opts ...zap.Option) *Logger {
 	l, err := New(opts...)
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
-	return l.Sugar(), nil
+	return l.Sugar()
 }
 
 type Logger = zap.SugaredLogger
