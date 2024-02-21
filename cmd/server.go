@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"through/log"
 	"through/server"
+	"time"
 )
 
 // serverCmd represents the server command
@@ -18,16 +19,21 @@ var serverCmd = &cobra.Command{
 		ctx, stop := signal.NotifyContext(context.Background(), os.Kill, os.Interrupt)
 		defer stop()
 
+		s, err := server.NewServer(ctx)
+		if err != nil {
+			log.Error("new server error: %v", err)
+			return
+		}
+
 		// start server
-		if err := server.Start(ctx); err != nil {
+		if err := s.Start(); err != nil {
 			log.Error("server start error: %v", err)
 			return
 		}
 
 		<-ctx.Done()
-		server.Stop()
-		log.Info("server stopping ...")
-		//time.Sleep(3 * time.Second)
+		s.Stop()
+		time.Sleep(3 * time.Second)
 	},
 }
 
