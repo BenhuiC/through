@@ -1,6 +1,6 @@
 common:
   env: "prod"
-  logFile: ".tmp/through.log"
+  logFile: ""
 
 server:
   addr: ":8888"
