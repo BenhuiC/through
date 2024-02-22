@@ -20,11 +20,19 @@ var clientCmd = &cobra.Command{
 		ctx, stop := signal.NotifyContext(context.Background(), os.Kill, os.Interrupt)
 		defer stop()
 
-		// start server
-		client.Start(ctx)
+		// start client
+		c, err := client.NewClient(ctx)
+		if err != nil {
+			log.Error("new client error: %v", err)
+			return
+		}
 
-		<-ctx.Done()
-		log.Info("client stopping ...")
+		if err = c.Start(); err != nil {
+			log.Error("client start error: %v", err)
+			return
+		}
+
+		c.Stop()
 		time.Sleep(3 * time.Second)
 	},
 }

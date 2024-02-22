@@ -9,6 +9,7 @@ import (
 	"sync"
 	"through/config"
 	"through/log"
+	"through/util"
 )
 
 type Server struct {
@@ -20,7 +21,7 @@ type Server struct {
 
 func NewServer(ctx context.Context) (s *Server, err error) {
 	cfg := config.Server
-	tlsCfg, err := loadTlsConfig(cfg.PrivateKey, cfg.CrtFile, cfg.CAFile)
+	tlsCfg, err := util.LoadTlsConfig(cfg.PrivateKey, cfg.CrtFile, cfg.CAFile, false)
 	if err != nil {
 		return
 	}
@@ -47,15 +48,16 @@ func (s *Server) Start() (err error) {
 
 	log.Info("server listen at %v", cfg.Addr)
 	s.wg.Add(1)
-	go s.listen(s.ctx, listener)
+	go s.listen()
 
+	<-s.ctx.Done()
 	return nil
 }
 
-func (s *Server) listen(ctx context.Context, listener net.Listener) {
+func (s *Server) listen() {
 	defer s.wg.Done()
 	for {
-		conn, err := listener.Accept()
+		conn, err := s.listener.Accept()
 		if err != nil {
 			if !errors.Is(err, net.ErrClosed) {
 				log.Error("tcp connection accept error: %v", err)
@@ -64,14 +66,14 @@ func (s *Server) listen(ctx context.Context, listener net.Listener) {
 		}
 
 		select {
-		case <-ctx.Done():
+		case <-s.ctx.Done():
 			return
 		default:
 		}
 
 		log.Info("accept connection from: %v", conn.RemoteAddr())
 
-		con := NewConnection(ctx, conn, log.NewLogger(zap.AddCallerSkip(1)))
+		con := NewConnection(s.ctx, conn, log.NewLogger(zap.AddCallerSkip(1)))
 		go con.Process()
 	}
 }

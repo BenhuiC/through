@@ -23,7 +23,10 @@ type ServerCfg struct {
 }
 
 type ClientCfg struct {
-	// todo
+	Addr       string `yaml:"addr"`
+	PrivateKey string `yaml:"privateKey"`
+	CrtFile    string `yaml:"crtFile"`
+	Server     string `yaml:"server"`
 }
 
 type CommonCfg struct {

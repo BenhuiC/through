@@ -10,3 +10,6 @@ server:
 
 client:
   addr: ":8889"
+  privateKey: "cert/client.key"
+  crtFile: "cert/client.crt"
+  server: "127.0.0.1:8888"

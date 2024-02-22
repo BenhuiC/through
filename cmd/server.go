@@ -31,7 +31,6 @@ var serverCmd = &cobra.Command{
 			return
 		}
 
-		<-ctx.Done()
 		s.Stop()
 		time.Sleep(3 * time.Second)
 	},

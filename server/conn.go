@@ -15,7 +15,7 @@ type Connection struct {
 	*log.Logger
 }
 
-func NewConnection(ctx context.Context, conn net.Conn, logger *log.Logger) *Connection {
+func NewConnection(ctx context.Context, conn net.Conn, logger *log.Logger) (c *Connection) {
 	return &Connection{ctx: ctx, conn: conn, Logger: logger}
 }
 
