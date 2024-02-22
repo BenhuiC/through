@@ -1,5 +1,5 @@
 common:
-  env: "prod"
+  env: "dev"
   logFile: ""
 
 server:

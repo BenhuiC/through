@@ -12,10 +12,10 @@ import (
 )
 
 type Client struct {
-	ctx      context.Context
-	listener net.Listener
-	tlsCfg   *tls.Config
-	wg       sync.WaitGroup
+	ctx            context.Context
+	listener       net.Listener
+	connectionPool *ConnectionPool
+	wg             sync.WaitGroup
 }
 
 func NewClient(ctx context.Context) (c *Client, err error) {
@@ -27,9 +27,9 @@ func NewClient(ctx context.Context) (c *Client, err error) {
 	}
 
 	c = &Client{
-		ctx:    ctx,
-		tlsCfg: tlsCfg,
-		wg:     sync.WaitGroup{},
+		ctx:            ctx,
+		connectionPool: NewConnectionPool(ctx, tlsCfg, cfg.Server, 10),
+		wg:             sync.WaitGroup{},
 	}
 	return
 }
@@ -46,16 +46,24 @@ func (c *Client) Start() (err error) {
 
 	log.Info("client listen at %v", cfg.Addr)
 	c.wg.Add(1)
+	go c.listenHttp()
 
+	<-c.ctx.Done()
 	return
 }
 
 func (c *Client) listenHttp() {
 	defer c.wg.Done()
-	http.Serve(c.listener, func() {})
+	handler := &HttpHandler{
+		connPool: c.connectionPool,
+	}
+	if err := http.Serve(c.listener, handler); err != nil {
+		log.Error("http server error: %v", err)
+	}
 }
 
 func (c *Client) Stop() {
+	c.connectionPool.Close()
 	if c.listener != nil {
 		_ = c.listener.Close()
 	}
