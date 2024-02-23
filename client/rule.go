@@ -22,7 +22,7 @@ const (
 )
 
 type RuleManager struct {
-	forwardClients []RuleForward
+	forwardClients []Rule
 }
 
 func NewRuleManager(rules []string) (r *RuleManager, err error) {
@@ -40,10 +40,10 @@ func NewRuleManager(rules []string) (r *RuleManager, err error) {
 	return
 }
 
-func (r *RuleManager) Get(host string) (f Forward) {
-	for i, ru := range r.forwardClients {
+func (r *RuleManager) Get(host string) (server string) {
+	for _, ru := range r.forwardClients {
 		if ru.Match(host) {
-			f = r.forwardClients[i]
+			server = ru.Server
 			return
 		}
 	}
@@ -53,7 +53,8 @@ func (r *RuleManager) Get(host string) (f Forward) {
 type Rule struct {
 	CondType RuleCondType
 	Action   RuleActionType
-	Param    string
+	Cond     string
+	Server   string
 }
 
 func NewRule(s string) (r Rule, err error) {
@@ -64,9 +65,4 @@ func NewRule(s string) (r Rule, err error) {
 func (r *Rule) Match(host string) bool {
 	// todo
 	return true
-}
-
-type RuleForward struct {
-	Rule
-	Forward
 }

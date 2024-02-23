@@ -5,17 +5,23 @@ import (
 	"errors"
 	"net"
 	"net/http"
+	"through/log"
 	"through/proto"
 	"time"
 )
 
 type HttpProxy struct {
-	connPool    *ConnectionPool
+	connPool    map[string]*ConnectionPool
+	forwards    map[string]Forward
 	ruleManager *RuleManager
 }
 
 func (h *HttpProxy) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
-	// todo
+	if request.Method == http.MethodConnect {
+		h.https(writer, request)
+	} else {
+		h.http(writer, request)
+	}
 }
 
 func (h *HttpProxy) https(writer http.ResponseWriter, request *http.Request) {
@@ -25,9 +31,11 @@ func (h *HttpProxy) https(writer http.ResponseWriter, request *http.Request) {
 
 func (h *HttpProxy) http(writer http.ResponseWriter, request *http.Request) {
 	host := request.Host // todo maybe ip:port
-	f := h.ruleManager.Get(host)
-	if f == nil {
-		responseError(writer, errors.New("rule not match"))
+	server := h.ruleManager.Get(host)
+	f, ok := h.forwards[server]
+	if !ok {
+		log.Info("host %v math no server", host)
+		responseError(writer, errors.New("rule match no server"))
 		return
 	}
 
