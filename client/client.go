@@ -28,7 +28,7 @@ func NewClient(ctx context.Context) (c *Client, err error) {
 
 	c = &Client{
 		ctx:            ctx,
-		connectionPool: NewConnectionPool(ctx, tlsCfg, cfg.Server, 10),
+		connectionPool: NewConnectionPool(ctx, tlsCfg, cfg.Server, 5),
 		wg:             sync.WaitGroup{},
 	}
 	return

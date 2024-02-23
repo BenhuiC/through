@@ -35,8 +35,7 @@ func NewConnectionPool(ctx context.Context, tlsCfg *tls.Config, addr string, siz
 		producerCnt: atomic.Int32{},
 	}
 
-	p.wg.Add(1)
-	go p.producer()
+	p.addProducer()
 	return p
 }
 
@@ -72,6 +71,19 @@ func (p *ConnectionPool) addProducer() {
 func (p *ConnectionPool) producer() {
 	defer p.wg.Done()
 	for {
+		// check if pool full
+		if len(p.pool) == cap(p.pool) {
+			// reduce producer
+			if v := p.producerCnt.Load(); v > 1 {
+				p.producerCnt.Add(-1)
+				log.Info("reducer connection producer, now is %d", v)
+				return
+			} else {
+				time.Sleep(1 * time.Second)
+			}
+		}
+
+		// new connection
 		c, err := tls.Dial("tcp", p.addr, p.tlsCfg)
 		if err != nil {
 			log.Error("dial server error:%v", err)
@@ -84,21 +96,7 @@ func (p *ConnectionPool) producer() {
 		case <-p.ctx.Done():
 			return
 		default:
-		}
-
-		select {
-		case p.pool <- c:
-		default:
-			// FIXME not work, cause server connection EOF
-			_ = c.Close()
-			// reduce producer
-			if v := p.producerCnt.Load(); v > 1 {
-				p.producerCnt.Add(-1)
-				log.Info("reducer connection producer, now is %d", v)
-				return
-			} else {
-				time.Sleep(1 * time.Second)
-			}
+			p.pool <- c
 		}
 
 	}

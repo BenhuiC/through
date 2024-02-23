@@ -7,6 +7,7 @@ import (
 	"os"
 )
 
+// LoadTlsConfig load tls config with private_key ,cert and ca
 func LoadTlsConfig(priKeyFile, crtFile, caFile string, insecure bool) (cfg *tls.Config, err error) {
 	cert, err := tls.LoadX509KeyPair(crtFile, priKeyFile)
 	if err != nil {

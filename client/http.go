@@ -23,10 +23,13 @@ type HttpHandler struct {
 }
 
 func (h *HttpHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
+	// todo user ruler to mapping different client
 	cli := http.Client{
 		Transport: &http.Transport{
 			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-				timeout, _ := context.WithTimeout(ctx, time.Second)
+				timeout, cancel := context.WithTimeout(ctx, time.Second)
+				defer cancel()
+
 				conn, err := h.connPool.Get(timeout)
 				if err != nil {
 					return nil, err
