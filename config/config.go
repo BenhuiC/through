@@ -23,10 +23,17 @@ type ServerCfg struct {
 }
 
 type ClientCfg struct {
-	Addr       string `yaml:"addr"`
-	PrivateKey string `yaml:"privateKey"`
-	CrtFile    string `yaml:"crtFile"`
-	Server     string `yaml:"server"`
+	Addr       string        `yaml:"addr"`
+	PrivateKey string        `yaml:"privateKey"`
+	CrtFile    string        `yaml:"crtFile"`
+	Servers    []ProxyServer `yaml:"servers"`
+	Rulers     []string      `yaml:"rules"`
+}
+
+type ProxyServer struct {
+	Name string `yaml:"name"`
+	Net  string `yaml:"net"`
+	Addr string `yaml:"addr"`
 }
 
 type CommonCfg struct {
