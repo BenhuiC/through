@@ -26,12 +26,13 @@ type ClientCfg struct {
 	Addr       string        `yaml:"addr"`
 	PrivateKey string        `yaml:"privateKey"`
 	CrtFile    string        `yaml:"crtFile"`
+	PoolSize   int           `yaml:"poolSize"`
 	Servers    []ProxyServer `yaml:"servers"`
 	Rulers     []string      `yaml:"rules"`
 }
 
 type ProxyServer struct {
-	Name string `yaml:"name"`
+	Name string `yaml:"name"` // name must be unique
 	Net  string `yaml:"net"`
 	Addr string `yaml:"addr"`
 }

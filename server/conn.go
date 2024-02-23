@@ -2,11 +2,10 @@ package server
 
 import (
 	"context"
-	"io"
 	"net"
-	"sync"
 	"through/log"
 	"through/proto"
+	"through/util"
 )
 
 type Connection struct {
@@ -35,21 +34,5 @@ func (c *Connection) Process() {
 	}
 
 	// forward
-	CopyLoopWait(remote, c.conn)
-}
-
-func CopyLoopWait(c1 net.Conn, c2 net.Conn) {
-	var wg sync.WaitGroup
-	cp := func(dst, src net.Conn) {
-		defer wg.Done()
-		_, err := io.Copy(dst, src)
-		_ = dst.Close()
-		if err != nil {
-			_ = src.Close()
-		}
-	}
-	wg.Add(2)
-	go cp(c1, c2)
-	go cp(c2, c1)
-	wg.Wait()
+	util.CopyLoopWait(remote, c.conn)
 }

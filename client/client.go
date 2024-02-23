@@ -12,10 +12,11 @@ import (
 )
 
 type Client struct {
-	ctx            context.Context
-	listener       net.Listener
-	connectionPool *ConnectionPool
-	wg             sync.WaitGroup
+	ctx       context.Context
+	listener  net.Listener
+	httpProxy *HttpProxy
+
+	wg sync.WaitGroup
 }
 
 func NewClient(ctx context.Context) (c *Client, err error) {
@@ -26,14 +27,21 @@ func NewClient(ctx context.Context) (c *Client, err error) {
 		return
 	}
 
+	// new http proxy handler
+	httpProxy, err := NewHttpProxy(ctx, tlsCfg, cfg.PoolSize, cfg.Servers, cfg.Rulers)
+	if err != nil {
+		return
+	}
+
 	c = &Client{
-		ctx:            ctx,
-		connectionPool: NewConnectionPool(ctx, tlsCfg, cfg.Server, 5),
-		wg:             sync.WaitGroup{},
+		ctx:       ctx,
+		httpProxy: httpProxy,
+		wg:        sync.WaitGroup{},
 	}
 	return
 }
 
+// Start listen and proxy
 func (c *Client) Start() (err error) {
 
 	cfg := config.Client
@@ -54,16 +62,13 @@ func (c *Client) Start() (err error) {
 
 func (c *Client) listenHttp() {
 	defer c.wg.Done()
-	handler := &HttpHandler{
-		connPool: c.connectionPool,
-	}
-	if err := http.Serve(c.listener, handler); err != nil {
+	if err := http.Serve(c.listener, c.httpProxy); err != nil {
 		log.Error("http server error: %v", err)
 	}
 }
 
 func (c *Client) Stop() {
-	c.connectionPool.Close()
+	c.httpProxy.Close()
 	if c.listener != nil {
 		_ = c.listener.Close()
 	}

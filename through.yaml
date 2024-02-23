@@ -12,6 +12,7 @@ client:
   addr: ":8889"
   privateKey: "cert/client.key"
   crtFile: "cert/client.crt"
+  poolSize: 10
   servers:
     - name: "local"
       address: "127.0.0.1:8888"
@@ -20,6 +21,5 @@ client:
     - 'host-suffix: ad.com, reject'
     - 'host-match: cdn, direct'
     - 'ip-cidr: 127.0.0.1/8, direct'
-    - 'has-server: tokyo && geo: JP, forward: local'
     - 'geo: CN, direct'
     - 'match-all, forward: local'
