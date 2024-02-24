@@ -28,7 +28,7 @@ type ClientCfg struct {
 	CrtFile    string        `yaml:"crtFile"`
 	PoolSize   int           `yaml:"poolSize"`
 	Servers    []ProxyServer `yaml:"servers"`
-	Rulers     []string      `yaml:"rules"`
+	Rules      []string      `yaml:"rules"`
 }
 
 type ProxyServer struct {

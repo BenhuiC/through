@@ -33,11 +33,12 @@ const (
 type RuleManager []Rule
 
 func NewRuleManager(rules []string) (r *RuleManager, err error) {
+	r = &RuleManager{}
 	*r = make([]Rule, 0, len(rules))
 	for _, str := range rules {
 		ru, err := NewRule(str)
 		if err != nil {
-			return
+			return nil, err
 		}
 		*r = append(*r, ru)
 	}
@@ -69,13 +70,13 @@ func NewRule(s string) (r Rule, err error) {
 		return
 	}
 
-	ru := ary[0]
-	action := ary[1]
+	ru := strings.TrimSpace(ary[0])
+	action := strings.TrimSpace(ary[1])
 
 	ruAry := strings.Split(ru, ":")
 	r.CondType = RuleCondType(ruAry[0])
 	if len(ruAry) == 2 {
-		r.CondParam = ruAry[1]
+		r.CondParam = strings.TrimSpace(ruAry[1])
 	}
 	if !isLegalRuleCondType(r.CondType) {
 		err = RuleFormatError
@@ -95,7 +96,10 @@ func NewRule(s string) (r Rule, err error) {
 			err = RuleFormatError
 			return
 		}
-		r.Server = acts[1]
+		r.Server = strings.TrimSpace(acts[1])
+	} else {
+		err = RuleFormatError
+		return
 	}
 
 	return

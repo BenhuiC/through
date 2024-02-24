@@ -36,17 +36,17 @@ func NewServer(ctx context.Context) (s *Server, err error) {
 }
 
 func (s *Server) Start() (err error) {
-	log.Info("server start")
+	log.Infof("server start")
 
 	cfg := config.Server
 	listener, err := tls.Listen("tcp", cfg.Addr, s.tlsCfg)
 	if err != nil {
-		log.Info("tcp listener error: %v", err)
+		log.Infof("tcp listener error: %v", err)
 		return
 	}
 	s.listener = listener
 
-	log.Info("server listen at %v", cfg.Addr)
+	log.Infof("server listen at %v", cfg.Addr)
 	s.wg.Add(1)
 	go s.listen()
 
@@ -60,7 +60,7 @@ func (s *Server) listen() {
 		conn, err := s.listener.Accept()
 		if err != nil {
 			if !errors.Is(err, net.ErrClosed) {
-				log.Error("tcp connection accept error: %v", err)
+				log.Errorf("tcp connection accept error: %v", err)
 			}
 			return
 		}
@@ -71,7 +71,7 @@ func (s *Server) listen() {
 		default:
 		}
 
-		log.Info("accept connection from: %v", conn.RemoteAddr())
+		log.Infof("accept connection from: %v", conn.RemoteAddr())
 
 		con := NewConnection(s.ctx, conn, log.NewLogger(zap.AddCallerSkip(1)))
 		go con.Process()
@@ -79,9 +79,9 @@ func (s *Server) listen() {
 }
 
 func (s *Server) Stop() {
-	log.Info("server stopping")
+	log.Infof("server stopping")
 	if err := s.listener.Close(); err != nil {
-		log.Warn("close server listener error: %v", err)
+		log.Warnf("close server listener error: %v", err)
 	}
 	s.wg.Wait()
 }

@@ -3,9 +3,11 @@ package client
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"io"
 	"net"
 	"net/http"
+	"through/config"
 	"through/log"
 	"through/proto"
 	"through/util"
@@ -18,6 +20,42 @@ type Forward interface {
 	Close()
 }
 
+type ForwardManger struct {
+	forwardClients map[string]Forward
+}
+
+func NewForwardManger(ctx context.Context, server []config.ProxyServer, tlsCfg *tls.Config, poolSize int) (f *ForwardManger, err error) {
+	f = &ForwardManger{forwardClients: map[string]Forward{}}
+	if len(server) == 0 {
+		err = errors.New("server config must more then zero")
+		return
+	}
+
+	f.forwardClients["reject"] = &RejectClient{}
+	f.forwardClients["direct"] = &DirectClient{}
+
+	for _, c := range server {
+		if _, ok := f.forwardClients[c.Name]; ok {
+			continue
+		}
+		forwardCli := NewForwardClient(ctx, c.Net, c.Addr, poolSize, tlsCfg)
+		f.forwardClients[c.Name] = forwardCli
+	}
+	return
+}
+
+func (f *ForwardManger) GetForward(name string) (forward Forward, ok bool) {
+	forward, ok = f.forwardClients[name]
+	return
+}
+
+func (f *ForwardManger) Close() {
+	for _, v := range f.forwardClients {
+		v.Close()
+	}
+}
+
+// DirectClient no proxy, direct call request
 type DirectClient struct{}
 
 func (d *DirectClient) Http(writer http.ResponseWriter, request *http.Request) {
@@ -35,7 +73,7 @@ func (d *DirectClient) Connect(conn net.Conn, meta *proto.Meta) {
 	defer conn.Close()
 	remote, err := net.Dial(meta.GetNet(), meta.GetAddress())
 	if err != nil {
-		log.Error("dial remote %v error", meta.GetAddress())
+		log.Errorf("dial remote %v error", meta.GetAddress())
 		return
 	}
 
@@ -44,21 +82,23 @@ func (d *DirectClient) Connect(conn net.Conn, meta *proto.Meta) {
 
 func (d *DirectClient) Close() {}
 
+// RejectClient reject request,for ad or black list
 type RejectClient struct{}
 
 func (r *RejectClient) Http(writer http.ResponseWriter, request *http.Request) {
-	log.Info("reject http request")
+	log.Infof("reject http request")
 	http.Error(writer, "reject", http.StatusForbidden)
 }
 
 func (r *RejectClient) Connect(conn net.Conn, meta *proto.Meta) {
 	defer conn.Close()
 	_, _ = conn.Write([]byte("reject"))
-	log.Info("reject connect")
+	log.Infof("reject connect")
 }
 
 func (r *RejectClient) Close() {}
 
+// ForwardClient forward request to target server
 type ForwardClient struct {
 	net    string
 	addr   string
@@ -93,7 +133,14 @@ func (f *ForwardClient) Http(writer http.ResponseWriter, request *http.Request) 
 }
 
 func (f *ForwardClient) Connect(conn net.Conn, meta *proto.Meta) {
+	remote, err := f.dialContext(context.Background(), meta.GetNet(), meta.GetAddress())
+	if err != nil {
+		log.Errorf("dial server error: %v", err)
+		_ = conn.Close()
+		return
+	}
 
+	util.CopyLoopWait(conn, remote)
 }
 
 func (f *ForwardClient) dialContext(ctx context.Context, network, addr string) (conn net.Conn, err error) {

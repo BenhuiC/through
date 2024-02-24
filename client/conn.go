@@ -64,19 +64,25 @@ func (p *ConnectionPool) addProducer() {
 		p.wg.Add(1)
 		go p.producer()
 		p.producerCnt.Add(1)
-		log.Info("add connection producer, now is %d", cnt+1)
+		log.Infof("add connection producer, now is %d", cnt+1)
 	}
 }
 
 func (p *ConnectionPool) producer() {
 	defer p.wg.Done()
 	for {
+		select {
+		case <-p.ctx.Done():
+			return
+		default:
+		}
+
 		// check if pool full
 		if len(p.pool) == cap(p.pool) {
 			// reduce producer
 			if v := p.producerCnt.Load(); v > 1 {
 				p.producerCnt.Add(-1)
-				log.Info("reducer connection producer, now is %d", v)
+				log.Infof("reducer connection producer, now is %d", v)
 				return
 			} else {
 				time.Sleep(1 * time.Second)
@@ -86,7 +92,7 @@ func (p *ConnectionPool) producer() {
 		// new connection
 		c, err := tls.Dial("tcp", p.addr, p.tlsCfg)
 		if err != nil {
-			log.Error("dial server error:%v", err)
+			log.Errorf("dial server error:%v", err)
 			time.Sleep(10 * time.Second)
 			continue
 		}

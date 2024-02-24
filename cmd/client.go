@@ -23,12 +23,12 @@ var clientCmd = &cobra.Command{
 		// start client
 		c, err := client.NewClient(ctx)
 		if err != nil {
-			log.Error("new client error: %v", err)
+			log.Errorf("new client error: %v", err)
 			return
 		}
 
 		if err = c.Start(); err != nil {
-			log.Error("client start error: %v", err)
+			log.Errorf("client start error: %v", err)
 			return
 		}
 

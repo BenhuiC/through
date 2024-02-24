@@ -22,14 +22,14 @@ func (c *Connection) Process() {
 	//  read data
 	meta, err := proto.ReadMeta(c.conn)
 	if err != nil {
-		log.Error("read meta data error: %v", err)
+		log.Errorf("read meta data error: %v", err)
 		return
 	}
 
 	// dial connection
 	remote, err := net.Dial(meta.GetNet(), meta.GetAddress())
 	if err != nil {
-		log.Error("dial to %v:%v error:%v", meta.GetNet(), meta.GetAddress(), err)
+		log.Errorf("dial to %v:%v error:%v", meta.GetNet(), meta.GetAddress(), err)
 		return
 	}
 

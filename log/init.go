@@ -28,18 +28,34 @@ func Init() (err error) {
 	return
 }
 
-func Info(format string, args ...interface{}) {
+func Infof(format string, args ...interface{}) {
 	defLogger.Infof(format, args...)
 }
 
-func Warn(format string, args ...interface{}) {
+func Info(args ...interface{}) {
+	defLogger.Info(args...)
+}
+
+func Warnf(format string, args ...interface{}) {
 	defLogger.Warnf(format, args...)
 }
 
-func Error(format string, args ...interface{}) {
+func Warn(args ...interface{}) {
+	defLogger.Warn(args...)
+}
+
+func Errorf(format string, args ...interface{}) {
 	defLogger.Errorf(format, args)
 }
 
-func Debug(format string, args ...interface{}) {
+func Error(args ...interface{}) {
+	defLogger.Error(args...)
+}
+
+func Debugf(format string, args ...interface{}) {
 	defLogger.Debugf(format, args)
+}
+
+func Debug(args ...interface{}) {
+	defLogger.Debug(args...)
 }

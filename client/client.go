@@ -12,7 +12,10 @@ import (
 )
 
 type Client struct {
-	ctx       context.Context
+	ctx           context.Context
+	ruleManager   *RuleManager
+	forwardManger *ForwardManger
+
 	listener  net.Listener
 	httpProxy *HttpProxy
 
@@ -27,16 +30,27 @@ func NewClient(ctx context.Context) (c *Client, err error) {
 		return
 	}
 
-	// new http proxy handler
-	httpProxy, err := NewHttpProxy(ctx, tlsCfg, cfg.PoolSize, cfg.Servers, cfg.Rulers)
+	// new proxy server manager
+	forwardManger, err := NewForwardManger(ctx, cfg.Servers, tlsCfg, cfg.PoolSize)
 	if err != nil {
 		return
 	}
 
+	// new proxy rule manger
+	ruleManger, err := NewRuleManager(cfg.Rules)
+	if err != nil {
+		return
+	}
+
+	// new http proxy handler
+	httpProxy := NewHttpProxy(ctx, forwardManger, ruleManger)
+
 	c = &Client{
-		ctx:       ctx,
-		httpProxy: httpProxy,
-		wg:        sync.WaitGroup{},
+		ctx:           ctx,
+		httpProxy:     httpProxy,
+		wg:            sync.WaitGroup{},
+		forwardManger: forwardManger,
+		ruleManager:   ruleManger,
 	}
 	return
 }
@@ -47,12 +61,12 @@ func (c *Client) Start() (err error) {
 	cfg := config.Client
 	listener, err := net.Listen("tcp", cfg.Addr)
 	if err != nil {
-		log.Info("tcp listener error: %v", err)
+		log.Infof("tcp listener error: %v", err)
 		return
 	}
 	c.listener = listener
 
-	log.Info("client listen at %v", cfg.Addr)
+	log.Infof("client listen at %v", cfg.Addr)
 	c.wg.Add(1)
 	go c.listenHttp()
 
@@ -63,12 +77,14 @@ func (c *Client) Start() (err error) {
 func (c *Client) listenHttp() {
 	defer c.wg.Done()
 	if err := http.Serve(c.listener, c.httpProxy); err != nil {
-		log.Error("http server error: %v", err)
+		log.Errorf("http server error: %v", err)
 	}
 }
 
 func (c *Client) Stop() {
-	c.httpProxy.Close()
+	if c.forwardManger != nil {
+		c.forwardManger.Close()
+	}
 	if c.listener != nil {
 		_ = c.listener.Close()
 	}

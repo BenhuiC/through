@@ -21,13 +21,13 @@ var serverCmd = &cobra.Command{
 
 		s, err := server.NewServer(ctx)
 		if err != nil {
-			log.Error("new server error: %v", err)
+			log.Errorf("new server error: %v", err)
 			return
 		}
 
 		// start server
 		if err := s.Start(); err != nil {
-			log.Error("server start error: %v", err)
+			log.Errorf("server start error: %v", err)
 			return
 		}
 

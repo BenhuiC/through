@@ -12,14 +12,14 @@ func ReadMeta(reader io.Reader) (meta *Meta, err error) {
 	// read data length
 	header := make([]byte, 4)
 	if _, err = io.ReadFull(reader, header); err != nil {
-		log.Error("reader header error: %v", err)
+		log.Errorf("reader header error: %v", err)
 		return
 	}
 	dataLen := binary.BigEndian.Uint32(header)
 
 	buf := make([]byte, dataLen)
 	if _, err = io.ReadFull(reader, buf); err != nil {
-		log.Error("reader data error: %v", err)
+		log.Errorf("reader data error: %v", err)
 		return
 	}
 
