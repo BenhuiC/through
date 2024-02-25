@@ -102,9 +102,9 @@ func (p *ConnectionPool) producer() {
 		case <-p.ctx.Done():
 			return
 		default:
-			p.pool <- c
 		}
 
+		p.pool <- c
 	}
 }
 

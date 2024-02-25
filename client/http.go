@@ -12,6 +12,15 @@ type HttpProxy struct {
 	ruleManager    *RuleManager
 }
 
+func NewHttpProxy(ctx context.Context, forwards *ForwardManger, rules *RuleManager) (p *HttpProxy) {
+	p = &HttpProxy{
+		forwardManager: forwards,
+		ruleManager:    rules,
+	}
+
+	return
+}
+
 func (h *HttpProxy) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	log.Infof("http proxy host: %v, method: %v", request.Host, request.Method)
 	if request.Method == http.MethodConnect {
@@ -66,13 +75,4 @@ func (h *HttpProxy) http(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	f.Http(writer, request)
-}
-
-func NewHttpProxy(ctx context.Context, forwards *ForwardManger, rules *RuleManager) (p *HttpProxy) {
-	p = &HttpProxy{
-		forwardManager: forwards,
-		ruleManager:    rules,
-	}
-
-	return
 }
