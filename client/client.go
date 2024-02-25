@@ -16,8 +16,11 @@ type Client struct {
 	ruleManager   *RuleManager
 	forwardManger *ForwardManger
 
-	listener  net.Listener
-	httpProxy *HttpProxy
+	httpListener net.Listener
+	httpProxy    *HttpProxy
+
+	socksListener net.Listener
+	socksProxy    *SocksProxy
 
 	wg sync.WaitGroup
 }
@@ -45,9 +48,13 @@ func NewClient(ctx context.Context) (c *Client, err error) {
 	// new http proxy handler
 	httpProxy := NewHttpProxy(ctx, forwardManger, ruleManger)
 
+	// new socks proxy handler
+	socksProxy := NewSocksProxy(ctx, forwardManger, ruleManger)
+
 	c = &Client{
 		ctx:           ctx,
 		httpProxy:     httpProxy,
+		socksProxy:    socksProxy,
 		wg:            sync.WaitGroup{},
 		forwardManger: forwardManger,
 		ruleManager:   ruleManger,
@@ -59,14 +66,27 @@ func NewClient(ctx context.Context) (c *Client, err error) {
 func (c *Client) Start() (err error) {
 
 	cfg := config.Client
-	listener, err := net.Listen("tcp", cfg.Addr)
+	// start http listener
+	httpLis, err := net.Listen("tcp", cfg.HttpAddr)
 	if err != nil {
-		log.Infof("tcp listener error: %v", err)
+		log.Infof("tcp http listener error: %v", err)
 		return
 	}
-	c.listener = listener
+	c.httpListener = httpLis
 
-	log.Infof("client listen at %v", cfg.Addr)
+	log.Infof("client http listen at %v", cfg.HttpAddr)
+	c.wg.Add(1)
+	go c.listenHttp()
+
+	// start socks listener
+	socksLis, err := net.Listen("tcp", cfg.SocksAddr)
+	if err != nil {
+		log.Infof("tcp socks listener error: %v", err)
+		return
+	}
+	c.socksListener = socksLis
+
+	log.Infof("client socks listen at %v", cfg.HttpAddr)
 	c.wg.Add(1)
 	go c.listenHttp()
 
@@ -76,8 +96,21 @@ func (c *Client) Start() (err error) {
 
 func (c *Client) listenHttp() {
 	defer c.wg.Done()
-	if err := http.Serve(c.listener, c.httpProxy); err != nil {
+	if err := http.Serve(c.httpListener, c.httpProxy); err != nil {
 		log.Errorf("http server error: %v", err)
+	}
+}
+
+func (c *Client) listenSocks() {
+	defer c.wg.Done()
+	for {
+		conn, err := c.socksListener.Accept()
+		if err != nil {
+			log.Errorf("socks listener error: %v", err)
+			return
+		}
+		// todo
+		go c.socksProxy.Serve(conn)
 	}
 }
 
@@ -85,8 +118,11 @@ func (c *Client) Stop() {
 	if c.forwardManger != nil {
 		c.forwardManger.Close()
 	}
-	if c.listener != nil {
-		_ = c.listener.Close()
+	if c.httpListener != nil {
+		_ = c.httpListener.Close()
+	}
+	if c.socksListener != nil {
+		_ = c.socksListener.Close()
 	}
 	c.wg.Wait()
 }

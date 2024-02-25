@@ -3,7 +3,8 @@ common:
   logFile: ""
 
 server:
-  addr: ":8888"
+  socksAddr: ":8887"
+  httpAddr: ":8888"
   privateKey: "cert/server.key"
   crtFile: "cert/server.crt"
   caFile: "cert/ca.crt"

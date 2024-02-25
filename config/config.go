@@ -23,7 +23,8 @@ type ServerCfg struct {
 }
 
 type ClientCfg struct {
-	Addr       string        `yaml:"addr"`
+	HttpAddr   string        `yaml:"httpAddr"`
+	SocksAddr  string        `yaml:"socksAddr"`
 	PrivateKey string        `yaml:"privateKey"`
 	CrtFile    string        `yaml:"crtFile"`
 	PoolSize   int           `yaml:"poolSize"`
