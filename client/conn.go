@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"go.uber.org/zap"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -18,8 +19,9 @@ type ConnectionPool struct {
 	tlsCfg *tls.Config
 	addr   string
 	pool   chan net.Conn
+	logger *log.Logger
 
-	sync.Mutex
+	lc          sync.Mutex
 	wg          sync.WaitGroup
 	producerCnt atomic.Int32
 }
@@ -30,8 +32,9 @@ func NewConnectionPool(ctx context.Context, tlsCfg *tls.Config, addr string, siz
 		pool:        make(chan net.Conn, size),
 		addr:        addr,
 		tlsCfg:      tlsCfg,
+		logger:      log.NewLogger(zap.AddCallerSkip(1)).With("address", addr),
 		wg:          sync.WaitGroup{},
-		Mutex:       sync.Mutex{},
+		lc:          sync.Mutex{},
 		producerCnt: atomic.Int32{},
 	}
 
@@ -58,13 +61,13 @@ func (p *ConnectionPool) addProducer() {
 	if cnt >= MaxProducer {
 		return
 	}
-	p.Lock()
-	defer p.Unlock()
+	p.lc.Lock()
+	defer p.lc.Unlock()
 	if cnt == p.producerCnt.Load() {
 		p.wg.Add(1)
 		go p.producer()
 		p.producerCnt.Add(1)
-		log.Infof("add connection producer, now is %d", cnt+1)
+		p.logger.Infof("add connection producer, now is %d", cnt+1)
 	}
 }
 
@@ -82,7 +85,7 @@ func (p *ConnectionPool) producer() {
 			// reduce producer
 			if v := p.producerCnt.Load(); v > 1 {
 				p.producerCnt.Add(-1)
-				log.Infof("reducer connection producer, now is %d", v)
+				p.logger.Infof("reducer connection producer, now is %d", v)
 				return
 			} else {
 				time.Sleep(1 * time.Second)
@@ -92,7 +95,7 @@ func (p *ConnectionPool) producer() {
 		// new connection
 		c, err := tls.Dial("tcp", p.addr, p.tlsCfg)
 		if err != nil {
-			log.Errorf("dial server error:%v", err)
+			p.logger.Errorf("dial server error:%v", err)
 			time.Sleep(10 * time.Second)
 			continue
 		}

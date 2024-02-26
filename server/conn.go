@@ -30,8 +30,10 @@ func (c *Connection) Process() {
 	remote, err := net.Dial(meta.GetNet(), meta.GetAddress())
 	if err != nil {
 		log.Errorf("dial to %v:%v error:%v", meta.GetNet(), meta.GetAddress(), err)
+		_ = c.conn.Close()
 		return
 	}
+	log.Infof("dial to %v,%v", meta.GetNet(), meta.Address)
 
 	// forward
 	util.CopyLoopWait(remote, c.conn)

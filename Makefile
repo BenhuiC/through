@@ -6,5 +6,8 @@ proto:
 build:
 	go build -o through main.go
 
+build_linux:
+	GOOS=linux GOARCH=amd64 go build -o through main.go
+
 run: build
 	./through

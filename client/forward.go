@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"go.uber.org/zap"
 	"io"
 	"net"
 	"net/http"
@@ -104,13 +105,15 @@ type ForwardClient struct {
 	addr   string
 	pool   *ConnectionPool
 	client *http.Client
+	logger *log.Logger
 }
 
 func NewForwardClient(ctx context.Context, network, addr string, poolSize int, tlsCfg *tls.Config) (f *ForwardClient) {
 	f = &ForwardClient{
-		net:  network,
-		addr: addr,
-		pool: NewConnectionPool(ctx, tlsCfg, addr, poolSize),
+		net:    network,
+		addr:   addr,
+		pool:   NewConnectionPool(ctx, tlsCfg, addr, poolSize),
+		logger: log.NewLogger(zap.AddCallerSkip(1)).With("network", network).With("address", addr),
 	}
 	f.client = &http.Client{
 		Transport: &http.Transport{
@@ -125,6 +128,7 @@ func (f *ForwardClient) Http(writer http.ResponseWriter, request *http.Request) 
 	removeProxyHeaders(request)
 	resp, err := f.client.Do(request)
 	if err != nil {
+		f.logger.Errorf("do http request error: %v", err)
 		http.Error(writer, err.Error(), http.StatusServiceUnavailable)
 		return
 	}
@@ -135,7 +139,7 @@ func (f *ForwardClient) Http(writer http.ResponseWriter, request *http.Request) 
 func (f *ForwardClient) Connect(conn net.Conn, meta *proto.Meta) {
 	remote, err := f.dialContext(context.Background(), meta.GetNet(), meta.GetAddress())
 	if err != nil {
-		log.Errorf("dial server error: %v", err)
+		f.logger.Errorf("dial server error: %v", err)
 		_ = conn.Close()
 		return
 	}

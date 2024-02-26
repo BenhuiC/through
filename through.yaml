@@ -1,16 +1,16 @@
 common:
-  env: "dev"
+  env: "prod"
   logFile: ""
 
 server:
-  socksAddr: ":8887"
-  httpAddr: ":8888"
+  addr: ":18889"
   privateKey: "cert/server.key"
   crtFile: "cert/server.crt"
   caFile: "cert/ca.crt"
 
 client:
-  addr: ":8889"
+  socksAddr: ":18887"
+  httpAddr: ":18888"
   privateKey: "cert/client.key"
   crtFile: "cert/client.crt"
   poolSize: 10

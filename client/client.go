@@ -86,9 +86,9 @@ func (c *Client) Start() (err error) {
 	}
 	c.socksListener = socksLis
 
-	log.Infof("client socks listen at %v", cfg.HttpAddr)
+	log.Infof("client socks listen at %v", cfg.SocksAddr)
 	c.wg.Add(1)
-	go c.listenHttp()
+	go c.listenSocks()
 
 	<-c.ctx.Done()
 	return
@@ -109,19 +109,21 @@ func (c *Client) listenSocks() {
 			log.Errorf("socks listener error: %v", err)
 			return
 		}
-		// todo
-		go c.socksProxy.Serve(conn)
+		c.socksProxy.Serve(conn)
 	}
 }
 
 func (c *Client) Stop() {
 	if c.forwardManger != nil {
+		log.Info("close forward manger")
 		c.forwardManger.Close()
 	}
 	if c.httpListener != nil {
+		log.Info("close http listener")
 		_ = c.httpListener.Close()
 	}
 	if c.socksListener != nil {
+		log.Info("close socks listener")
 		_ = c.socksListener.Close()
 	}
 	c.wg.Wait()
