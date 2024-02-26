@@ -13,14 +13,19 @@ import (
 
 type ResolverManager struct {
 	resolvers []*net.Resolver
-	cache     map[string]net.IP // todo
+	cache     map[string]*ResolveCache
 	lc        sync.RWMutex
 }
 
-func NewResolverManger(cfg []config.ResolverServer) (r *ResolverManager, err error) {
+type ResolveCache struct {
+	ip    net.IP
+	addAt time.Time
+}
+
+func NewResolverManger(ctx context.Context, cfg []config.ResolverServer) (r *ResolverManager, err error) {
 	r = &ResolverManager{
 		resolvers: make([]*net.Resolver, 0, len(cfg)),
-		cache:     make(map[string]net.IP),
+		cache:     make(map[string]*ResolveCache),
 		lc:        sync.RWMutex{},
 	}
 
@@ -43,42 +48,103 @@ func NewResolverManger(cfg []config.ResolverServer) (r *ResolverManager, err err
 		r.resolvers = append(r.resolvers, NewLocalResolver())
 	}
 
+	go r.cleanUp(ctx)
 	return
 }
 
 func (s *ResolverManager) Lookup(host string) (ip net.IP) {
+	// check cache
+	if ip = s.getCache(host); ip != nil {
+		return
+	}
+
+	// do resolve
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
 	wg := sync.WaitGroup{}
-	result := make(chan net.IP)
+	type resolveResult struct {
+		net.IP
+		error
+	}
+	resultChan := make(chan resolveResult)
 	resolve := func(r *net.Resolver) {
 		defer wg.Done()
 		ips, err := r.LookupIP(ctx, "ip", host)
-		if err != nil || len(ips) == 0 {
-			return
+		var ipRes net.IP
+		if len(ips) > 0 {
+			ipRes = ips[0]
 		}
 		select {
-		case result <- ips[0]:
+		case resultChan <- resolveResult{IP: ipRes, error: err}:
 			return
 		case <-ctx.Done():
 			return
 		}
 	}
 
-	// FIXME 超时或error情况会阻塞
 	for i := range s.resolvers {
 		wg.Add(1)
 		go resolve(s.resolvers[i])
 	}
 
-	ip = <-result
-	cancel()
-	close(result)
+	for {
+		// wait until a success result or just timeout
+		select {
+		case res := <-resultChan:
+			if res.error != nil {
+				continue
+			}
+			ip = res.IP
+			s.setCache(host, ip)
+			// cancel to stop all goroutine
+			cancel()
+			wg.Wait()
+			close(resultChan)
+			return
+		case <-ctx.Done():
+			return
+		}
+	}
 
-	wg.Wait()
+}
 
+func (s *ResolverManager) getCache(host string) (ip net.IP) {
+	s.lc.RLock()
+	defer s.lc.RUnlock()
+	if i, ok := s.cache[host]; ok {
+		ip = i.ip
+	}
 	return
+}
+
+func (s *ResolverManager) setCache(host string, ip net.IP) {
+	s.lc.Lock()
+	defer s.lc.Unlock()
+	s.cache[host] = &ResolveCache{
+		ip:    ip,
+		addAt: time.Now(),
+	}
+}
+
+func (s *ResolverManager) cleanUp(ctx context.Context) {
+	ticker := time.NewTicker(5 * time.Second)
+	for {
+		select {
+		case <-ticker.C:
+			// FIXME ticker not work ?
+			now := time.Now()
+			s.lc.Lock()
+			for k, v := range s.cache {
+				if now.Sub(v.addAt) > 30*time.Second {
+					delete(s.cache, k)
+				}
+			}
+			s.lc.Unlock()
+		case <-ctx.Done():
+			return
+		}
+	}
 }
 
 func NewLocalResolver() (n *net.Resolver) {
