@@ -57,7 +57,7 @@ func NewResolverManger(ctx context.Context, cfg []config.ResolverServer) (r *Res
 func (s *ResolverManager) Lookup(host string) (ip net.IP) {
 	// check cache
 	if ip = s.getCache(host); ip != nil {
-		log.Debugf("%v get cache %v", host, ip)
+		log.Debugf("%v get cache %s", host, ip.String())
 		return
 	}
 
@@ -74,6 +74,9 @@ func (s *ResolverManager) Lookup(host string) (ip net.IP) {
 	resolve := func(r *net.Resolver) {
 		defer wg.Done()
 		ips, err := r.LookupIP(ctx, "ip", host)
+		if err != nil {
+			log.Debugf("resolve %v error: %v", host, err)
+		}
 		var ipRes net.IP
 		if len(ips) > 0 {
 			ipRes = ips[0]

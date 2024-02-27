@@ -153,6 +153,7 @@ func (f *ForwardClient) dialContext(ctx context.Context, network, addr string) (
 
 	conn, err = f.pool.Get(timeout)
 	if err != nil {
+		log.Errorf("%v get connection error %v", addr, err)
 		return
 	}
 

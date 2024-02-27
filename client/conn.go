@@ -48,6 +48,7 @@ func (p *ConnectionPool) Get(timeout context.Context) (c net.Conn, err error) {
 	case <-p.ctx.Done():
 		return
 	case <-timeout.Done():
+		p.logger.Debug("get connect timeout, add one producer")
 		p.addProducer()
 		err = errors.New("timeout")
 		return
@@ -103,15 +104,18 @@ func (p *ConnectionPool) producer() {
 		// return when server is closed
 		select {
 		case <-p.ctx.Done():
+			p.logger.Debug("connection producer stop")
 			close(p.pool)
 			return
 		case p.pool <- c:
+			p.logger.Debug("producer one connect")
 			continue
 		}
 	}
 }
 
 func (p *ConnectionPool) Close() {
+	p.logger.Info("close pool")
 	for c := range p.pool {
 		if c == nil {
 			break

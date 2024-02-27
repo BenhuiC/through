@@ -45,7 +45,7 @@ func Warn(args ...interface{}) {
 }
 
 func Errorf(format string, args ...interface{}) {
-	defLogger.Errorf(format, args)
+	defLogger.Errorf(format, args...)
 }
 
 func Error(args ...interface{}) {
@@ -53,7 +53,7 @@ func Error(args ...interface{}) {
 }
 
 func Debugf(format string, args ...interface{}) {
-	defLogger.Debugf(format, args)
+	defLogger.Debugf(format, args...)
 }
 
 func Debug(args ...interface{}) {
