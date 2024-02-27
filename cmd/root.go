@@ -29,7 +29,7 @@ var cfgFile string
 
 func init() {
 	cobra.OnInitialize(Init)
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "./through.yaml", "config file (default is $HOME/.through.yaml)")
+	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "./through.yaml", "config file (default is $HOME/.through.yaml)")
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.

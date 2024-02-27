@@ -16,6 +16,9 @@ func TestRuleManager_Get(t *testing.T) {
 		{
 			DoT: "dns.pub",
 		},
+		{
+			DoT: "223.6.6.6",
+		},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -73,6 +76,13 @@ func TestRuleManager_Get(t *testing.T) {
 			name: "5",
 			args: args{
 				host: "www.baidu.cn",
+			},
+			wantServer: "direct",
+		},
+		{
+			name: "6",
+			args: args{
+				host: "tool.lu",
 			},
 			wantServer: "direct",
 		},

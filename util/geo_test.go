@@ -6,9 +6,10 @@ import (
 )
 
 func TestCountry(t *testing.T) {
+	ip := "8.136.83.38"
 	i := net.IP{}
-	if err := i.UnmarshalText([]byte("212.64.63.124")); err != nil {
+	if err := i.UnmarshalText([]byte(ip)); err != nil {
 		t.Fatal(err)
 	}
-	t.Logf("212.64.63.124 -> %s", Country(i))
+	t.Logf("%s -> %s", ip, Country(i))
 }

@@ -53,6 +53,10 @@ func NewRuleManager(resolvers *ResolverManager, rules []string) (r *RuleManager,
 }
 
 func (r *RuleManager) Get(host string) (server string) {
+	if strings.Contains(host, ":") {
+		ary := strings.Split(host, ":")
+		host = ary[0]
+	}
 	for _, ru := range r.rules {
 		if ru.Match(r.resolvers, host) {
 			server = ru.Server
