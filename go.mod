@@ -5,8 +5,11 @@ go 1.20
 require (
 	github.com/golang/protobuf v1.5.3
 	github.com/mitchellh/mapstructure v1.5.0
+	github.com/ncruces/go-dns v1.2.5
+	github.com/oschwald/geoip2-golang v1.9.0
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.18.2
+	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8
 	go.uber.org/zap v1.26.0
 	google.golang.org/protobuf v1.31.0
 )
@@ -16,7 +19,7 @@ require (
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
-	github.com/ncruces/go-dns v1.2.5 // indirect
+	github.com/oschwald/maxminddb-golang v1.11.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.1.1 // indirect
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect

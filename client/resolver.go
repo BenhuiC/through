@@ -9,6 +9,7 @@ import (
 	"sync"
 	"through/config"
 	"through/log"
+	"through/util"
 	"time"
 )
 
@@ -110,6 +111,12 @@ func (s *ResolverManager) Lookup(host string) (ip net.IP) {
 		}
 	}
 
+}
+
+func (s *ResolverManager) Country(host string) (c string) {
+	ipAddr := s.Lookup(host)
+	c = util.Country(ipAddr)
+	return
 }
 
 func (s *ResolverManager) getCache(host string) (ip net.IP) {

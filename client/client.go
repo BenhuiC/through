@@ -39,8 +39,14 @@ func NewClient(ctx context.Context) (c *Client, err error) {
 		return
 	}
 
+	// new host resolver
+	resolvers, err := NewResolverManger(ctx, cfg.Resolvers)
+	if err != nil {
+		return
+	}
+
 	// new proxy rule manger
-	ruleManger, err := NewRuleManager(cfg.Rules)
+	ruleManger, err := NewRuleManager(resolvers, cfg.Rules)
 	if err != nil {
 		return
 	}

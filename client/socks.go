@@ -63,7 +63,6 @@ func (s *SocksProxy) Serve(conn net.Conn) {
 			return
 		}
 
-		log.Infof("socks proxy host: %v", meta.GetAddress())
 		server := s.ruleManager.Get(meta.GetAddress())
 		f, ok := s.forwardManager.GetForward(server)
 		if !ok {
@@ -71,6 +70,7 @@ func (s *SocksProxy) Serve(conn net.Conn) {
 			_ = conn.Close()
 			return
 		}
+		log.Infof("socks host %v math server %v", meta.GetAddress(), server)
 
 		f.Connect(conn, meta)
 	}()

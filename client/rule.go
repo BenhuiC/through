@@ -2,6 +2,7 @@ package client
 
 import (
 	"errors"
+	"net"
 	"regexp"
 	"strings"
 )
@@ -30,25 +31,30 @@ const (
 	RuleActionTypeForward RuleActionType = "forward"
 )
 
-type RuleManager []Rule
+type RuleManager struct {
+	rules     []Rule
+	resolvers *ResolverManager
+}
 
-func NewRuleManager(rules []string) (r *RuleManager, err error) {
-	r = &RuleManager{}
-	*r = make([]Rule, 0, len(rules))
+func NewRuleManager(resolvers *ResolverManager, rules []string) (r *RuleManager, err error) {
+	r = &RuleManager{
+		rules:     make([]Rule, 0, len(rules)),
+		resolvers: resolvers,
+	}
 	for _, str := range rules {
 		ru, err := NewRule(str)
 		if err != nil {
 			return nil, err
 		}
-		*r = append(*r, ru)
+		r.rules = append(r.rules, ru)
 	}
 
 	return
 }
 
 func (r *RuleManager) Get(host string) (server string) {
-	for _, ru := range *r {
-		if ru.Match(host) {
+	for _, ru := range r.rules {
+		if ru.Match(r.resolvers, host) {
 			server = ru.Server
 			return
 		}
@@ -105,7 +111,7 @@ func NewRule(s string) (r Rule, err error) {
 	return
 }
 
-func (r *Rule) Match(host string) (ok bool) {
+func (r *Rule) Match(rs *ResolverManager, host string) (ok bool) {
 	switch r.CondType {
 	case RuleCondTypeHostMatch:
 		ok = strings.Contains(host, r.CondParam)
@@ -117,11 +123,13 @@ func (r *Rule) Match(host string) (ok bool) {
 		reg := regexp.MustCompile(r.CondParam)
 		ok = reg.Match([]byte(host))
 	case RuleCondTypeGEO:
-		// todo
+		ct := rs.Country(host)
+		if ct == r.CondParam {
+			ok = true
+		}
 	case RuleCondTypeIPCIDR:
-		// todo
-		//_, ipnet, _ := net.ParseCIDR(r.CondParam)
-		//ok=ipnet.Contains(pv.Resolv(host))
+		_, ipnet, _ := net.ParseCIDR(r.CondParam)
+		ok = ipnet.Contains(rs.Lookup(host))
 	case RuleCondTypeMatchAll:
 		ok = true
 	}

@@ -104,10 +104,9 @@ func (p *ConnectionPool) producer() {
 		select {
 		case <-p.ctx.Done():
 			return
-		default:
+		case p.pool <- c:
+			continue
 		}
-
-		p.pool <- c
 	}
 }
 

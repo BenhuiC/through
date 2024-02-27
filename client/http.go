@@ -33,7 +33,7 @@ func (h *HttpProxy) ServeHTTP(writer http.ResponseWriter, request *http.Request)
 func (h *HttpProxy) https(writer http.ResponseWriter, request *http.Request) {
 	hij, ok := writer.(http.Hijacker)
 	if !ok {
-		log.Infof("httpserver does not support hijacking")
+		log.Errorf("httpserver does not support hijacking")
 		http.Error(writer, "httpserver does not support hijacking", http.StatusServiceUnavailable)
 		return
 	}
@@ -46,6 +46,7 @@ func (h *HttpProxy) https(writer http.ResponseWriter, request *http.Request) {
 		http.Error(writer, "rule match no server", http.StatusServiceUnavailable)
 		return
 	}
+	log.Infof("https host %v math server %v", host, server)
 
 	proxyClient, _, e := hij.Hijack()
 	if e != nil {
@@ -73,6 +74,7 @@ func (h *HttpProxy) http(writer http.ResponseWriter, request *http.Request) {
 		http.Error(writer, "rule match no server", http.StatusServiceUnavailable)
 		return
 	}
+	log.Infof("http host %v math server %v", host, server)
 
 	f.Http(writer, request)
 }
