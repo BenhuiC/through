@@ -65,14 +65,8 @@ func (s *ResolverManager) Lookup(host string) (ip net.IP) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	wg := sync.WaitGroup{}
-	type resolveResult struct {
-		net.IP
-		error
-	}
-	resultChan := make(chan resolveResult)
+	resultChan := make(chan net.IP)
 	resolve := func(r *net.Resolver) {
-		defer wg.Done()
 		ips, err := r.LookupIP(ctx, "ip", host)
 		if err != nil {
 			log.Debugf("resolve %v error: %v", host, err)
@@ -82,7 +76,7 @@ func (s *ResolverManager) Lookup(host string) (ip net.IP) {
 			ipRes = ips[0]
 		}
 		select {
-		case resultChan <- resolveResult{IP: ipRes, error: err}:
+		case resultChan <- ipRes:
 			return
 		case <-ctx.Done():
 			return
@@ -90,26 +84,18 @@ func (s *ResolverManager) Lookup(host string) (ip net.IP) {
 	}
 
 	for i := range s.resolvers {
-		wg.Add(1)
 		go resolve(s.resolvers[i])
 	}
 
 	for {
 		// wait until a success result or just timeout
 		select {
-		case res := <-resultChan:
-			if res.error != nil {
-				continue
-			}
-			ip = res.IP
-			s.setCache(host, ip)
+		case ip = <-resultChan:
 			// cancel to stop all goroutine
 			cancel()
-			wg.Wait()
-			close(resultChan)
+			s.setCache(host, ip)
 			return
 		case <-ctx.Done():
-			close(resultChan)
 			return
 		}
 	}

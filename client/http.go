@@ -22,7 +22,6 @@ func NewHttpProxy(ctx context.Context, forwards *ForwardManger, rules *RuleManag
 }
 
 func (h *HttpProxy) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
-	log.Infof("http proxy host: %v, method: %v", request.Host, request.Method)
 	if request.Method == http.MethodConnect {
 		h.https(writer, request)
 	} else {
