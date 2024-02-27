@@ -103,6 +103,7 @@ func (p *ConnectionPool) producer() {
 		// return when server is closed
 		select {
 		case <-p.ctx.Done():
+			close(p.pool)
 			return
 		case p.pool <- c:
 			continue
@@ -111,7 +112,6 @@ func (p *ConnectionPool) producer() {
 }
 
 func (p *ConnectionPool) Close() {
-	close(p.pool)
 	for c := range p.pool {
 		if c == nil {
 			break
