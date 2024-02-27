@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"through/config"
+	"through/log"
 	"time"
 )
 
@@ -55,6 +56,7 @@ func NewResolverManger(ctx context.Context, cfg []config.ResolverServer) (r *Res
 func (s *ResolverManager) Lookup(host string) (ip net.IP) {
 	// check cache
 	if ip = s.getCache(host); ip != nil {
+		log.Debugf("%v get cache %v", host, ip)
 		return
 	}
 
@@ -103,6 +105,7 @@ func (s *ResolverManager) Lookup(host string) (ip net.IP) {
 			close(resultChan)
 			return
 		case <-ctx.Done():
+			close(resultChan)
 			return
 		}
 	}
@@ -128,16 +131,15 @@ func (s *ResolverManager) setCache(host string, ip net.IP) {
 }
 
 func (s *ResolverManager) cleanUp(ctx context.Context) {
-	ticker := time.NewTicker(5 * time.Second)
+	ticker := time.Tick(1 * time.Second)
 	for {
 		select {
-		case <-ticker.C:
-			// FIXME ticker not work ?
-			now := time.Now()
+		case now := <-ticker:
 			s.lc.Lock()
 			for k, v := range s.cache {
 				if now.Sub(v.addAt) > 30*time.Second {
 					delete(s.cache, k)
+					log.Debugf("delete cache %v", k)
 				}
 			}
 			s.lc.Unlock()

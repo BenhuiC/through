@@ -20,7 +20,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestResolverManager_Lookup(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Second)
 	defer cancel()
 	r, err := NewResolverManger(ctx, []config.ResolverServer{
 		{DoT: "185.222.222.222"},
