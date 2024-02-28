@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
-	"go.uber.org/zap"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -32,7 +31,7 @@ func NewConnectionPool(ctx context.Context, tlsCfg *tls.Config, addr string, siz
 		pool:        make(chan net.Conn, size),
 		addr:        addr,
 		tlsCfg:      tlsCfg,
-		logger:      log.NewLogger(zap.AddCallerSkip(1)).With("address", addr),
+		logger:      log.NewLogger().With("address", addr),
 		wg:          sync.WaitGroup{},
 		lc:          sync.Mutex{},
 		producerCnt: atomic.Int32{},
@@ -93,6 +92,7 @@ func (p *ConnectionPool) producer() {
 			}
 		}
 
+		start := time.Now()
 		// new connection
 		c, err := tls.Dial("tcp", p.addr, p.tlsCfg)
 		if err != nil {
@@ -100,6 +100,7 @@ func (p *ConnectionPool) producer() {
 			time.Sleep(10 * time.Second)
 			continue
 		}
+		p.logger.Debugf("produce one connect cost %v", time.Now().Sub(start))
 
 		// return when server is closed
 		select {

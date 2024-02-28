@@ -79,6 +79,7 @@ func (s *ResolverManager) Lookup(host string) (ip net.IP) {
 		case resultChan <- ipRes:
 			return
 		case <-ctx.Done():
+			close(resultChan)
 			return
 		}
 	}
@@ -87,17 +88,15 @@ func (s *ResolverManager) Lookup(host string) (ip net.IP) {
 		go resolve(s.resolvers[i])
 	}
 
-	for {
-		// wait until a success result or just timeout
-		select {
-		case ip = <-resultChan:
-			// cancel to stop all goroutine
-			cancel()
-			s.setCache(host, ip)
-			return
-		case <-ctx.Done():
-			return
-		}
+	// wait until a success result or just timeout
+	select {
+	case ip = <-resultChan:
+		// cancel to stop all goroutine
+		cancel()
+		s.setCache(host, ip)
+		return
+	case <-ctx.Done():
+		return
 	}
 
 }
