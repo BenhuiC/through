@@ -74,12 +74,13 @@ func (s *ResolverManager) Lookup(host string) (ip net.IP) {
 		var ipRes net.IP
 		if len(ips) > 0 {
 			ipRes = ips[0]
+		} else {
+			return
 		}
 		select {
 		case resultChan <- ipRes:
 			return
 		case <-ctx.Done():
-			close(resultChan)
 			return
 		}
 	}

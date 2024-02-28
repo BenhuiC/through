@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"math/rand"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -11,7 +12,7 @@ import (
 	"time"
 )
 
-const MaxProducer = 10
+const MaxProducer = 20
 
 type ConnectionPool struct {
 	ctx    context.Context
@@ -52,6 +53,11 @@ func (p *ConnectionPool) Get(timeout context.Context) (c net.Conn, err error) {
 		err = errors.New("timeout")
 		return
 	case c = <-p.pool:
+		// if pool close to null, add producer
+		if len(p.pool) <= cap(p.pool)/3 {
+			p.logger.Debug("consume too fast, add one producer")
+			p.addProducer()
+		}
 		return
 	}
 }
@@ -59,6 +65,7 @@ func (p *ConnectionPool) Get(timeout context.Context) (c net.Conn, err error) {
 func (p *ConnectionPool) addProducer() {
 	cnt := p.producerCnt.Load()
 	if cnt >= MaxProducer {
+		p.logger.Debugf("producer num reach %d, not add", MaxProducer)
 		return
 	}
 	p.lc.Lock()
@@ -82,10 +89,13 @@ func (p *ConnectionPool) producer() {
 
 		// check if pool full
 		if len(p.pool) == cap(p.pool) {
+			// sleep 10~20ms, return if pool still full
+			time.Sleep(time.Duration(rand.Intn(10)+10) * time.Millisecond)
+
 			// reduce producer
-			if v := p.producerCnt.Load(); v > 1 {
+			if v := p.producerCnt.Load(); len(p.pool) == cap(p.pool) && v > 1 {
 				p.producerCnt.Add(-1)
-				p.logger.Infof("reducer connection producer, now is %d", v)
+				p.logger.Infof("reducer connection producer, now is %d", v-1)
 				return
 			} else {
 				time.Sleep(1 * time.Second)
@@ -109,7 +119,7 @@ func (p *ConnectionPool) producer() {
 			close(p.pool)
 			return
 		case p.pool <- c:
-			p.logger.Debug("producer one connect")
+			p.logger.Debug("put one connect")
 			continue
 		}
 	}
