@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"through/config"
 	"through/log"
@@ -10,7 +11,7 @@ import (
 
 func TestMain(m *testing.M) {
 	config.Common = &config.CommonCfg{
-		Env:     "prod",
+		Env:     "dev",
 		LogFile: "",
 	}
 	if err := log.Init(); err != nil {
@@ -31,10 +32,23 @@ func TestResolverManager_Lookup(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	t.Logf("lookup www.baidu.com -> %v", r.Lookup("www.baidu.com"))
-	t.Logf("lookup www.google.com -> %v", r.Lookup("www.google.com"))
+	start := time.Now()
 
-	time.Sleep(32 * time.Second)
-	t.Logf("lookup www.baidu.com -> %v", r.Lookup("www.baidu.com"))
-	t.Logf("lookup www.google.com -> %v", r.Lookup("www.google.com"))
+	wg := sync.WaitGroup{}
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			t.Logf("lookup www.baidu.com -> %v", r.Lookup("www.baidu.com"))
+		}()
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			t.Logf("lookup www.google.com -> %v", r.Lookup("www.google.com"))
+		}()
+	}
+
+	wg.Wait()
+	t.Logf("total cose %v", time.Now().Sub(start))
 }

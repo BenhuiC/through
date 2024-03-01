@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/ncruces/go-dns"
+	"golang.org/x/sync/singleflight"
 	"net"
 	"strings"
 	"sync"
@@ -17,6 +18,7 @@ type ResolverManager struct {
 	resolvers []*net.Resolver
 	cache     map[string]*ResolveCache
 	lc        sync.RWMutex
+	sf        singleflight.Group
 }
 
 type ResolveCache struct {
@@ -29,6 +31,7 @@ func NewResolverManger(ctx context.Context, cfg []config.ResolverServer) (r *Res
 		resolvers: make([]*net.Resolver, 0, len(cfg)),
 		cache:     make(map[string]*ResolveCache),
 		lc:        sync.RWMutex{},
+		sf:        singleflight.Group{},
 	}
 
 	for _, c := range cfg {
@@ -55,12 +58,35 @@ func NewResolverManger(ctx context.Context, cfg []config.ResolverServer) (r *Res
 }
 
 func (s *ResolverManager) Lookup(host string) (ip net.IP) {
+	start := time.Now()
+	defer func() {
+		log.Debugf("lookup %v cost %v", host, time.Now().Sub(start))
+	}()
+
 	// check cache
 	if ip = s.getCache(host); ip != nil {
 		log.Debugf("%v get cache %s", host, ip.String())
 		return
 	}
 
+	val, err, _ := s.sf.Do(host, func() (interface{}, error) {
+		v := s.doResolver(host)
+		return v, nil
+	})
+	if err != nil {
+		log.Errorf("do resolver error: %v", err)
+		return
+	}
+
+	ip, _ = val.(net.IP)
+	if ip != nil {
+		s.setCache(host, ip)
+	}
+
+	return
+}
+
+func (s *ResolverManager) doResolver(host string) (ip net.IP) {
 	// do resolve
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
@@ -94,12 +120,10 @@ func (s *ResolverManager) Lookup(host string) (ip net.IP) {
 	case ip = <-resultChan:
 		// cancel to stop all goroutine
 		cancel()
-		s.setCache(host, ip)
 		return
 	case <-ctx.Done():
 		return
 	}
-
 }
 
 func (s *ResolverManager) Country(host string) (c string) {

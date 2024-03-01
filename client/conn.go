@@ -89,8 +89,8 @@ func (p *ConnectionPool) producer() {
 
 		// check if pool full
 		if len(p.pool) == cap(p.pool) {
-			// sleep 10~20ms, return if pool still full
-			time.Sleep(time.Duration(rand.Intn(10)+10) * time.Millisecond)
+			// sleep 500~1000ms, return if pool still full
+			time.Sleep(time.Duration(rand.Intn(500)+500) * time.Millisecond)
 
 			// reduce producer
 			if v := p.producerCnt.Load(); len(p.pool) == cap(p.pool) && v > 1 {

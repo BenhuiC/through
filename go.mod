@@ -11,6 +11,7 @@ require (
 	github.com/spf13/viper v1.18.2
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8
 	go.uber.org/zap v1.26.0
+	golang.org/x/sync v0.5.0
 	google.golang.org/protobuf v1.31.0
 )
 
