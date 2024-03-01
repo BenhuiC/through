@@ -18,5 +18,5 @@ docker_build:
 
 docker_server: docker_build
 	docker container stop through
-	docker container rm throug
+	docker container rm through
 	docker run -d --name=through --net=host --restart=always through:$(tag) server
