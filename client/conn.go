@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"github.com/xtaci/kcp-go"
 	"math/rand"
 	"net"
 	"sync"
@@ -15,24 +16,26 @@ import (
 const MaxProducer = 20
 
 type ConnectionPool struct {
-	ctx    context.Context
-	tlsCfg *tls.Config
-	addr   string
-	pool   chan net.Conn
-	logger *log.Logger
+	ctx     context.Context
+	tlsCfg  *tls.Config
+	network string
+	addr    string
+	pool    chan net.Conn
+	logger  *log.Logger
 
 	lc          sync.Mutex
 	wg          sync.WaitGroup
 	producerCnt atomic.Int32
 }
 
-func NewConnectionPool(ctx context.Context, tlsCfg *tls.Config, addr string, size int) (p *ConnectionPool) {
+func NewConnectionPool(ctx context.Context, size int, network, addr string, tlsCfg *tls.Config) (p *ConnectionPool) {
 	p = &ConnectionPool{
 		ctx:         ctx,
 		pool:        make(chan net.Conn, size),
+		network:     network,
 		addr:        addr,
 		tlsCfg:      tlsCfg,
-		logger:      log.NewLogger().With("address", addr),
+		logger:      log.NewLogger().With("type", "connectionPool").With("network", network).With("address", addr),
 		wg:          sync.WaitGroup{},
 		lc:          sync.Mutex{},
 		producerCnt: atomic.Int32{},
@@ -78,6 +81,31 @@ func (p *ConnectionPool) addProducer() {
 	}
 }
 
+type Producer func(addr string, tlsCfg *tls.Config) (conn net.Conn, err error)
+
+var tcpProducer Producer = func(addr string, tlsCfg *tls.Config) (conn net.Conn, err error) {
+	conn, err = tls.Dial("tcp", addr, tlsCfg)
+	return
+}
+
+var udpProducer Producer = func(addr string, tlsCfg *tls.Config) (conn net.Conn, err error) {
+	if conn, err = kcp.Dial(addr); err != nil {
+		return
+	}
+	conn = tls.Client(conn, tlsCfg)
+	return
+}
+
+func GetProducer(network string) (p Producer) {
+	switch network {
+	case "tcp":
+		return tcpProducer
+	case "udp":
+		return udpProducer
+	}
+	return
+}
+
 func (p *ConnectionPool) producer() {
 	defer p.wg.Done()
 	for {
@@ -104,7 +132,12 @@ func (p *ConnectionPool) producer() {
 
 		start := time.Now()
 		// new connection
-		c, err := tls.Dial("tcp", p.addr, p.tlsCfg)
+		prod := GetProducer(p.network)
+		if prod == nil {
+			p.logger.Errorf("unsupported network %v", p.network)
+			return
+		}
+		c, err := prod(p.addr, p.tlsCfg)
 		if err != nil {
 			p.logger.Errorf("dial server error:%v", err)
 			time.Sleep(10 * time.Second)

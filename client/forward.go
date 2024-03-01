@@ -112,8 +112,8 @@ func NewForwardClient(ctx context.Context, network, addr string, poolSize int, t
 	f = &ForwardClient{
 		net:    network,
 		addr:   addr,
-		pool:   NewConnectionPool(ctx, tlsCfg, addr, poolSize),
-		logger: log.NewLogger(zap.AddCallerSkip(1)).With("network", network).With("address", addr),
+		pool:   NewConnectionPool(ctx, poolSize, network, addr, tlsCfg),
+		logger: log.NewLogger(zap.AddCallerSkip(1)).With("type", "forwardClient").With("network", network).With("address", addr),
 	}
 	f.client = &http.Client{
 		Transport: &http.Transport{

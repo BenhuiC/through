@@ -16,7 +16,8 @@ type Config struct {
 }
 
 type ServerCfg struct {
-	Addr       string `yaml:"addr"`
+	TcpAddr    string `yaml:"tcpAddr"`
+	UdpAddr    string `yaml:"udpAddr"`
 	PrivateKey string `yaml:"privateKey"`
 	CrtFile    string `yaml:"crtFile"`
 	CAFile     string `yaml:"caFile"`
