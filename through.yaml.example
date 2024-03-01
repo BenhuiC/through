@@ -3,7 +3,8 @@ common:
   logFile: ""
 
 server:
-  addr: ":18889"
+  tcpAddr: ":18889"
+  udpAddr: ":19000"
   privateKey: "cert/server.key"
   crtFile: "cert/server.crt"
   caFile: "cert/ca.crt"
