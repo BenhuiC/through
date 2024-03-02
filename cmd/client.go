@@ -34,7 +34,7 @@ var clientCmd = &cobra.Command{
 
 		log.Info("client stopping")
 		c.Stop()
-		time.Sleep(3 * time.Second)
+		time.Sleep(1 * time.Second)
 	},
 }
 

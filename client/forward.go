@@ -51,6 +51,7 @@ func (f *ForwardManger) GetForward(name string) (forward Forward, ok bool) {
 }
 
 func (f *ForwardManger) Close() {
+	log.Info("close forward manager")
 	for _, v := range f.forwardClients {
 		v.Close()
 	}

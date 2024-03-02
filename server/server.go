@@ -17,7 +17,7 @@ type Server struct {
 	ctx         context.Context
 	tlsCfg      *tls.Config
 	tcpListener net.Listener
-	udpListener net.Listener
+	kcpListener net.Listener
 	wg          sync.WaitGroup
 }
 
@@ -48,12 +48,12 @@ func (s *Server) Start() (err error) {
 	}
 	s.tcpListener = tcpListener
 
-	updListener, err := kcp.Listen(cfg.UdpAddr)
+	kcpListener, err := kcp.Listen(cfg.UdpAddr)
 	if err != nil {
 		log.Infof("upd listener error: %v", err)
 		return
 	}
-	s.udpListener = updListener
+	s.kcpListener = kcpListener
 
 	log.Infof("tcp server listen at %v", cfg.TcpAddr)
 	s.wg.Add(1)
@@ -61,7 +61,7 @@ func (s *Server) Start() (err error) {
 
 	log.Infof("upd server listen at %v", cfg.UdpAddr)
 	s.wg.Add(1)
-	go s.listenUdp()
+	go s.listenKcp()
 
 	<-s.ctx.Done()
 	return nil
@@ -91,10 +91,10 @@ func (s *Server) listenTcp() {
 	}
 }
 
-func (s *Server) listenUdp() {
+func (s *Server) listenKcp() {
 	defer s.wg.Done()
 	for {
-		conn, err := s.udpListener.Accept()
+		conn, err := s.kcpListener.Accept()
 		if err != nil {
 			if !errors.Is(err, net.ErrClosed) {
 				log.Errorf("upd connection accept error: %v", err)
@@ -110,6 +110,7 @@ func (s *Server) listenUdp() {
 
 		log.Infof("accept connection from: %v", conn.RemoteAddr())
 
+		// warp with tls
 		conn = tls.Server(conn, s.tlsCfg)
 		con := NewConnection(s.ctx, conn, log.NewLogger(zap.AddCallerSkip(1)))
 		go con.Process()

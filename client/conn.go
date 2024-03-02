@@ -88,7 +88,7 @@ var tcpProducer Producer = func(addr string, tlsCfg *tls.Config) (conn net.Conn,
 	return
 }
 
-var udpProducer Producer = func(addr string, tlsCfg *tls.Config) (conn net.Conn, err error) {
+var kcpProducer Producer = func(addr string, tlsCfg *tls.Config) (conn net.Conn, err error) {
 	if conn, err = kcp.Dial(addr); err != nil {
 		return
 	}
@@ -96,12 +96,12 @@ var udpProducer Producer = func(addr string, tlsCfg *tls.Config) (conn net.Conn,
 	return
 }
 
-func GetProducer(network string) (p Producer) {
-	switch network {
+func (p *ConnectionPool) getProducer() (pro Producer) {
+	switch p.network {
 	case "tcp":
 		return tcpProducer
-	case "udp":
-		return udpProducer
+	case "kcp":
+		return kcpProducer
 	}
 	return
 }
@@ -132,7 +132,7 @@ func (p *ConnectionPool) producer() {
 
 		start := time.Now()
 		// new connection
-		prod := GetProducer(p.network)
+		prod := p.getProducer()
 		if prod == nil {
 			p.logger.Errorf("unsupported network %v", p.network)
 			return
