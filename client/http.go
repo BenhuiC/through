@@ -7,6 +7,7 @@ import (
 	"through/proto"
 )
 
+// HttpProxy http/https proxy
 type HttpProxy struct {
 	forwardManager *ForwardManger
 	ruleManager    *RuleManager

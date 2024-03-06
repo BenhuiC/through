@@ -3,6 +3,7 @@ package config
 import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
+	"os"
 )
 
 var Server *ServerCfg
@@ -51,6 +52,10 @@ type CommonCfg struct {
 }
 
 func Init(file string) (err error) {
+	if _, err = os.Stat(file); os.IsNotExist(err) {
+		file = "~/.through/through.yaml"
+	}
+
 	viper.SetConfigFile(file)
 
 	viper.AutomaticEnv() // read in environment variables that match

@@ -42,6 +42,7 @@ var (
 	UnSupportCommand = errors.New("unsupported command")
 )
 
+// SocksProxy socks5 proxy
 type SocksProxy struct {
 	forwardManager *ForwardManger
 	ruleManager    *RuleManager

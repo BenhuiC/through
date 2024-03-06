@@ -26,6 +26,7 @@ type ResolveCache struct {
 	addAt time.Time
 }
 
+// NewResolverManger manage the resolvers of given config
 func NewResolverManger(ctx context.Context, cfg []config.ResolverServer) (r *ResolverManager, err error) {
 	r = &ResolverManager{
 		resolvers: make([]*net.Resolver, 0, len(cfg)),
@@ -57,6 +58,7 @@ func NewResolverManger(ctx context.Context, cfg []config.ResolverServer) (r *Res
 	return
 }
 
+// Lookup host->ip
 func (s *ResolverManager) Lookup(host string) (ip net.IP) {
 	start := time.Now()
 	defer func() {
@@ -69,6 +71,7 @@ func (s *ResolverManager) Lookup(host string) (ip net.IP) {
 		return
 	}
 
+	// use singleflight
 	val, err, _ := s.sf.Do(host, func() (interface{}, error) {
 		v := s.doResolver(host)
 		return v, nil
@@ -126,6 +129,7 @@ func (s *ResolverManager) doResolver(host string) (ip net.IP) {
 	}
 }
 
+// Country get the country where the host located at, return IsoCode
 func (s *ResolverManager) Country(host string) (c string) {
 	ipAddr := s.Lookup(host)
 	c = util.Country(ipAddr)
@@ -141,6 +145,7 @@ func (s *ResolverManager) getCache(host string) (ip net.IP) {
 	return
 }
 
+// setCache set host->ip in cache map, expire at 30 seconds
 func (s *ResolverManager) setCache(host string, ip net.IP) {
 	s.lc.Lock()
 	defer s.lc.Unlock()
@@ -169,11 +174,13 @@ func (s *ResolverManager) cleanUp(ctx context.Context) {
 	}
 }
 
+// NewLocalResolver default host resolver with system config
 func NewLocalResolver() (n *net.Resolver) {
 	n = &net.Resolver{}
 	return
 }
 
+// NewDNSResolver new dns resolver with give server
 func NewDNSResolver(server string) (n *net.Resolver) {
 	if !strings.Contains(server, ":") {
 		server = server + ":53"
@@ -189,6 +196,7 @@ func NewDNSResolver(server string) (n *net.Resolver) {
 	return
 }
 
+// NewDoTResolver new resolver with give server on tls
 func NewDoTResolver(server string) (n *net.Resolver, err error) {
 	n, err = dns.NewDoTResolver(server)
 	return

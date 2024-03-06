@@ -14,21 +14,21 @@ var (
 type RuleCondType string
 
 const (
-	RuleCondTypeHostMatch  RuleCondType = "host-match"
-	RuleCondTypeHostPrefix RuleCondType = "host-prefix"
-	RuleCondTypeHostSuffix RuleCondType = "host-suffix"
-	RuleCondTypeHostRegexp RuleCondType = "host-regexp"
-	RuleCondTypeGEO        RuleCondType = "geo"
-	RuleCondTypeIPCIDR     RuleCondType = "ip-cidr"
-	RuleCondTypeMatchAll   RuleCondType = "match-all"
+	RuleCondTypeHostMatch  RuleCondType = "host-match"  // 字符串包含
+	RuleCondTypeHostPrefix RuleCondType = "host-prefix" // 字符串前缀
+	RuleCondTypeHostSuffix RuleCondType = "host-suffix" // 字符串后缀
+	RuleCondTypeHostRegexp RuleCondType = "host-regexp" // 正则匹配
+	RuleCondTypeGEO        RuleCondType = "geo"         // geo地址匹配
+	RuleCondTypeIPCIDR     RuleCondType = "ip-cidr"     // cidr匹配
+	RuleCondTypeMatchAll   RuleCondType = "match-all"   // always return true
 )
 
 type RuleActionType string
 
 const (
-	RuleActionTypeReject  RuleActionType = "reject"
-	RuleActionTypeDirect  RuleActionType = "direct"
-	RuleActionTypeForward RuleActionType = "forward"
+	RuleActionTypeReject  RuleActionType = "reject"  // reject request
+	RuleActionTypeDirect  RuleActionType = "direct"  // call at local
+	RuleActionTypeForward RuleActionType = "forward" // forward to through server
 )
 
 type RuleManager struct {
