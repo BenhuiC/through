@@ -1,17 +1,25 @@
 ## 证书生成
-1. 根证书
-   openssl genrsa -out ca.key 2048
-   openssl rsa -in ca.key -pubout -out ca.pem
-   openssl req -new -key ca.key -out ca.csr
-   openssl x509 -days 365 -req -in ca.csr -signkey ca.key -out ca.crt
-2. 服务端
-   openssl genrsa -out server.key 2048
-   openssl rsa -in server.key -pubout -out server.pem
-   openssl req -new -key server.key -out server.csr
-   openssl x509 -days 365 -req -CA ca.crt -CAkey ca.key -CAcreateserial -in server.csr -out server.crt
-3. 客户端
-   openssl genrsa -out client.key 2048
-   openssl rsa -in server.key -pubout -out client.pem
-   openssl req -new -key client.key -out client.csr
-   openssl x509 -days 365 -req -CA ca.crt -CAkey ca.key -CAcreateserial -in client.csr -out client.crt
-   
+1. 生成根证书
+```shell
+country=your_country city=your_city organization=your_organization make root_ca
+```
+
+2. 生成服务端证书
+```shell
+country=your_country city=your_city organization=your_organization make server_ca
+```
+
+3. 生成客户端证书
+```shell
+country=your_country city=your_city organization=your_organization make client_ca
+```
+
+## 打包镜像
+```shell
+make image
+```
+
+## 运行服务端
+```shell
+docker run -d --name=through --net=host --restart=always through:your_tag server
+```
