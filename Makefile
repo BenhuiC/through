@@ -22,7 +22,7 @@ client_ca:
 	openssl x509 -days 365 -req -CA ca.crt -CAkey ca.key -CAcreateserial -in client.csr -out client.crt
 
 proto:
-	protoc --proto_path=./proto --go_out=../ ./proto/*.proto
+	protoc --proto_path=./proto --go_out=../ --go-grpc_out=../ ./proto/*.proto
 
 build:
 	go build -o through main.go

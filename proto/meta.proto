@@ -6,3 +6,16 @@ message Meta {
   string net =1;
   string address =2;
 }
+
+message ForwardRequest {
+  Meta meta =1;
+  bytes data=2;
+}
+
+message ForwardResponse {
+  bytes data =1;
+}
+
+service Through {
+  rpc Forward(stream ForwardRequest) returns (stream ForwardResponse) {}
+}

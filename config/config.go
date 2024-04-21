@@ -18,7 +18,7 @@ type Config struct {
 
 type ServerCfg struct {
 	TcpAddr    string `yaml:"tcpAddr"`
-	UdpAddr    string `yaml:"udpAddr"`
+	GrpcAddr   string `yaml:"grpcAddr"`
 	PrivateKey string `yaml:"privateKey"`
 	CrtFile    string `yaml:"crtFile"`
 	CAFile     string `yaml:"caFile"`

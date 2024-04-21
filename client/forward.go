@@ -5,6 +5,8 @@ import (
 	"crypto/tls"
 	"errors"
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"io"
 	"net"
 	"net/http"
@@ -39,7 +41,12 @@ func NewForwardManger(ctx context.Context, server []config.ProxyServer, tlsCfg *
 		if _, ok := f.forwardClients[c.Name]; ok {
 			continue
 		}
-		forwardCli := NewForwardClient(ctx, c.Net, c.Addr, poolSize, tlsCfg)
+		var forwardCli Forward
+		if c.Net == "grpc" {
+			forwardCli = NewGrpcForwardClient(ctx, c.Net, c.Addr, tlsCfg)
+		} else {
+			forwardCli = NewForwardClient(ctx, c.Net, c.Addr, poolSize, tlsCfg)
+		}
 		f.forwardClients[c.Name] = forwardCli
 	}
 	return
@@ -173,6 +180,78 @@ func (f *ForwardClient) Close() {
 	if f.pool != nil {
 		f.pool.Close()
 	}
+}
+
+// GrpcForwardClient forward request to target grpc server
+type GrpcForwardClient struct {
+	net     string
+	addr    string
+	client  *http.Client
+	grpcCli proto.ThroughClient
+	logger  *log.Logger
+}
+
+func NewGrpcForwardClient(ctx context.Context, network, addr string, tlsCfg *tls.Config) (f *GrpcForwardClient) {
+	f = &GrpcForwardClient{
+		net:    network,
+		addr:   addr,
+		logger: log.NewLogger(zap.AddCallerSkip(1)).With("type", "forwardClient").With("network", network).With("address", addr),
+	}
+	conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(credentials.NewTLS(tlsCfg)))
+	if err != nil {
+		panic(err)
+	}
+	f.grpcCli = proto.NewThroughClient(conn)
+	f.client = &http.Client{
+		Transport: &http.Transport{
+			DialContext: f.dialContext,
+		},
+	}
+
+	return
+}
+
+func (f *GrpcForwardClient) Http(writer http.ResponseWriter, request *http.Request) {
+	removeProxyHeaders(request)
+	resp, err := f.client.Do(request)
+	if err != nil {
+		f.logger.Errorf("do http request error: %v", err)
+		http.Error(writer, err.Error(), http.StatusServiceUnavailable)
+		return
+	}
+	defer resp.Body.Close()
+	copyHTTPResponse(writer, resp)
+}
+
+func (f *GrpcForwardClient) Connect(conn net.Conn, meta *proto.Meta) {
+	remote, err := f.dialContext(context.Background(), meta.GetNet(), meta.GetAddress())
+	if err != nil {
+		f.logger.Errorf("dial server error: %v", err)
+		_ = conn.Close()
+		return
+	}
+
+	util.CopyLoopWait(conn, remote)
+}
+
+func (f *GrpcForwardClient) dialContext(ctx context.Context, network, addr string) (conn net.Conn, err error) {
+	stream, err := f.grpcCli.Forward(ctx)
+	if err != nil {
+		log.Errorf("client forward error: %v", err)
+		return
+	}
+
+	conn = &GrpcConnection{stream: stream, Response: &proto.ForwardResponse{}}
+	if err = stream.Send(&proto.ForwardRequest{Meta: &proto.Meta{Net: network, Address: addr}}); err != nil {
+		log.Errorf("client send meta error: %v", err)
+		return
+	}
+
+	return
+}
+
+func (f *GrpcForwardClient) Close() {
+	return
 }
 
 func copyHTTPResponse(w http.ResponseWriter, resp *http.Response) {

@@ -4,12 +4,12 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
-	"github.com/xtaci/kcp-go"
 	"math/rand"
 	"net"
 	"sync"
 	"sync/atomic"
 	"through/log"
+	"through/proto"
 	"time"
 )
 
@@ -88,20 +88,10 @@ var tcpProducer Producer = func(addr string, tlsCfg *tls.Config) (conn net.Conn,
 	return
 }
 
-var kcpProducer Producer = func(addr string, tlsCfg *tls.Config) (conn net.Conn, err error) {
-	if conn, err = kcp.Dial(addr); err != nil {
-		return
-	}
-	conn = tls.Client(conn, tlsCfg)
-	return
-}
-
 func (p *ConnectionPool) getProducer() (pro Producer) {
 	switch p.network {
 	case "tcp":
 		return tcpProducer
-	case "kcp":
-		return kcpProducer
 	}
 	return
 }
@@ -167,4 +157,84 @@ func (p *ConnectionPool) Close() {
 		_ = c.Close()
 	}
 	p.wg.Wait()
+}
+
+type GrpcConnection struct {
+	stream              proto.Through_ForwardClient
+	Response            *proto.ForwardResponse
+	readOffset          int
+	readLock, writeLock sync.Mutex
+	responseLock        sync.Mutex
+}
+
+func (g *GrpcConnection) Close() error {
+	log.Debugf("close grpc connection")
+	g.writeLock.Lock()
+	defer g.writeLock.Unlock()
+	return g.stream.CloseSend()
+}
+
+func (g *GrpcConnection) LocalAddr() net.Addr {
+	return nil
+}
+
+func (g *GrpcConnection) RemoteAddr() net.Addr {
+	return nil
+}
+
+func (g *GrpcConnection) SetDeadline(t time.Time) error {
+	return nil
+}
+
+func (g *GrpcConnection) SetReadDeadline(t time.Time) error {
+	return nil
+}
+
+func (g *GrpcConnection) SetWriteDeadline(t time.Time) error {
+	return nil
+}
+
+func (g *GrpcConnection) Read(p []byte) (n int, err error) {
+	g.readLock.Lock()
+	defer g.readLock.Unlock()
+	defer func() {
+		log.Debugf("read from grpc connection: %v", n)
+	}()
+
+	if g.readOffset == 0 {
+		if err = g.stream.RecvMsg(g.Response); err != nil {
+			log.Errorf("receive strem error: %v", err)
+			return 0, err
+		}
+	}
+
+	data := g.Response.GetData()
+	copy(p, data[g.readOffset:])
+
+	if len(data) <= (len(p) + g.readOffset) {
+		n := len(data) - g.readOffset
+		g.readOffset = 0
+		g.Response.Reset()
+
+		return n, err
+	}
+
+	g.readOffset += len(p)
+
+	return len(p), nil
+}
+
+func (g *GrpcConnection) Write(p []byte) (n int, err error) {
+	g.writeLock.Lock()
+	defer g.writeLock.Unlock()
+	log.Debugf("write data to grpc: %v", len(p))
+
+	g.responseLock.Lock()
+	err = g.stream.Send(&proto.ForwardRequest{Data: p})
+	g.responseLock.Unlock()
+	if err != nil {
+		return
+	}
+	n = len(p)
+	return
 }

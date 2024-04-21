@@ -4,21 +4,24 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
-	"github.com/xtaci/kcp-go"
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
+	"io"
 	"net"
 	"sync"
 	"through/config"
 	"through/log"
+	"through/proto"
 	"through/util"
 )
 
 type Server struct {
-	ctx         context.Context
-	tlsCfg      *tls.Config
-	tcpListener net.Listener
-	kcpListener net.Listener
-	wg          sync.WaitGroup
+	proto.UnimplementedThroughServer
+	ctx          context.Context
+	tlsCfg       *tls.Config
+	tcpListener  net.Listener
+	grpcListener net.Listener
+	wg           sync.WaitGroup
 }
 
 func NewServer(ctx context.Context) (s *Server, err error) {
@@ -41,29 +44,59 @@ func (s *Server) Start() (err error) {
 	log.Infof("server start")
 
 	cfg := config.Server
+	// raw tcp
 	tcpListener, err := tls.Listen("tcp", cfg.TcpAddr, s.tlsCfg)
 	if err != nil {
 		log.Infof("tcp listener error: %v", err)
 		return
 	}
 	s.tcpListener = tcpListener
-
-	kcpListener, err := kcp.Listen(cfg.UdpAddr)
-	if err != nil {
-		log.Infof("upd listener error: %v", err)
-		return
-	}
-	s.kcpListener = kcpListener
-
 	log.Infof("tcp server listen at %v", cfg.TcpAddr)
 	s.wg.Add(1)
 	go s.listenTcp()
 
-	log.Infof("upd server listen at %v", cfg.UdpAddr)
+	// grpc
+	grpcListener, err := tls.Listen("tcp", cfg.GrpcAddr, s.tlsCfg)
+	if err != nil {
+		log.Infof("grpc listener error: %v", err)
+		return
+	}
+	s.grpcListener = grpcListener
+	log.Infof("grpc server listen at %v", cfg.GrpcAddr)
 	s.wg.Add(1)
-	go s.listenKcp()
+	go s.listenGrpc()
 
 	<-s.ctx.Done()
+	return nil
+}
+
+func (s *Server) Forward(stream proto.Through_ForwardServer) (err error) {
+	var remote net.Conn
+
+	if remote == nil {
+		var req *proto.ForwardRequest
+		req, err = stream.Recv()
+		if errors.Is(err, io.EOF) {
+			return
+		} else if err != nil {
+			log.Errorf("receive from stream error: %v", err)
+			return
+		}
+		log.Infof("start connection: %v", req.GetMeta())
+		if req.GetMeta() == nil {
+			err = errors.New("first request must contain meta")
+			return
+		}
+		meta := req.GetMeta()
+		remote, err = net.Dial(meta.GetNet(), meta.GetAddress())
+		if err != nil {
+			log.Errorf("dial to %v:%v error:%v", meta.GetNet(), meta.GetAddress(), err)
+			return err
+		}
+	}
+
+	util.CopyLoopWait(remote, &GrpcConnection{stream: stream, Response: &proto.ForwardRequest{}})
+	log.Info("close connection")
 	return nil
 }
 
@@ -91,36 +124,23 @@ func (s *Server) listenTcp() {
 	}
 }
 
-func (s *Server) listenKcp() {
+func (s *Server) listenGrpc() {
 	defer s.wg.Done()
-	for {
-		conn, err := s.kcpListener.Accept()
-		if err != nil {
-			if !errors.Is(err, net.ErrClosed) {
-				log.Errorf("upd connection accept error: %v", err)
-			}
-			return
-		}
-
-		select {
-		case <-s.ctx.Done():
-			return
-		default:
-		}
-
-		log.Infof("accept connection from: %v", conn.RemoteAddr())
-
-		// warp with tls
-		conn = tls.Server(conn, s.tlsCfg)
-		con := NewConnection(s.ctx, conn, log.NewLogger(zap.AddCallerSkip(1)))
-		go con.Process()
+	server := grpc.NewServer()
+	proto.RegisterThroughServer(server, s)
+	err := server.Serve(s.grpcListener)
+	if err != nil {
+		log.Errorf("grcp connection serve error: %v", err)
 	}
 }
 
 func (s *Server) Stop() {
 	log.Infof("server stopping")
 	if err := s.tcpListener.Close(); err != nil {
-		log.Warnf("close server listener error: %v", err)
+		log.Warnf("close tcp listener error: %v", err)
+	}
+	if err := s.grpcListener.Close(); err != nil {
+		log.Warnf("close grcp listener error: %v", err)
 	}
 	s.wg.Wait()
 }
