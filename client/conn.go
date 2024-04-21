@@ -203,7 +203,6 @@ func (g *GrpcConnection) Read(p []byte) (n int, err error) {
 
 	if g.readOffset == 0 {
 		if err = g.stream.RecvMsg(g.Response); err != nil {
-			log.Errorf("receive strem error: %v", err)
 			return 0, err
 		}
 	}
