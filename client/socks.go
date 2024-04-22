@@ -100,6 +100,7 @@ func (s *SocksProxy) auth(conn net.Conn) (err error) {
 		return
 	}
 
+	// only support socks5
 	ver, nMethods := buf[0], buf[1]
 	if ver != Socks5Version {
 		err = UnSupportVersion

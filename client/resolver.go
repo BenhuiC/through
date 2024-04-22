@@ -18,7 +18,7 @@ type ResolverManager struct {
 	resolvers []*net.Resolver
 	cache     map[string]*ResolveCache
 	lc        sync.RWMutex
-	sf        singleflight.Group
+	group     singleflight.Group
 }
 
 type ResolveCache struct {
@@ -32,7 +32,7 @@ func NewResolverManger(ctx context.Context, cfg []config.ResolverServer) (r *Res
 		resolvers: make([]*net.Resolver, 0, len(cfg)),
 		cache:     make(map[string]*ResolveCache),
 		lc:        sync.RWMutex{},
-		sf:        singleflight.Group{},
+		group:     singleflight.Group{},
 	}
 
 	for _, c := range cfg {
@@ -72,7 +72,7 @@ func (s *ResolverManager) Lookup(host string) (ip net.IP) {
 	}
 
 	// use singleflight
-	val, err, _ := s.sf.Do(host, func() (interface{}, error) {
+	val, err, _ := s.group.Do(host, func() (interface{}, error) {
 		v := s.doResolver(host)
 		return v, nil
 	})
