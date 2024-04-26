@@ -6,7 +6,6 @@ import (
 	"errors"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/keepalive"
 	"io"
 	"net"
 	"sync"
@@ -14,7 +13,6 @@ import (
 	"through/pkg/log"
 	"through/pkg/proto"
 	"through/util"
-	"time"
 )
 
 type Server struct {
@@ -130,14 +128,7 @@ func (s *Server) listenTcp() {
 
 func (s *Server) listenGrpc() {
 	defer s.wg.Done()
-	var kaep = keepalive.EnforcementPolicy{
-		PermitWithoutStream: true, // Allow pings even when there are no active streams
-	}
-	var kasp = keepalive.ServerParameters{
-		Time:    30 * time.Second,
-		Timeout: 3 * time.Second,
-	}
-	server := grpc.NewServer(grpc.KeepaliveEnforcementPolicy(kaep), grpc.KeepaliveParams(kasp))
+	server := grpc.NewServer()
 	proto.RegisterThroughServer(server, s)
 	err := server.Serve(s.grpcListener)
 	if err != nil {
