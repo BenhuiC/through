@@ -29,16 +29,16 @@ type ClientCfg struct {
 	SocksAddr  string           `yaml:"socksAddr"`
 	PrivateKey string           `yaml:"privateKey"`
 	CrtFile    string           `yaml:"crtFile"`
-	PoolSize   int              `yaml:"poolSize"`
 	Resolvers  []ResolverServer `yaml:"resolvers"`
 	Servers    []ProxyServer    `yaml:"servers"`
 	Rules      []string         `yaml:"rules"`
 }
 
 type ProxyServer struct {
-	Name string `yaml:"name"` // name must be unique
-	Net  string `yaml:"net"`
-	Addr string `yaml:"addr"`
+	Name     string `yaml:"name"` // name must be unique
+	Net      string `yaml:"net"`
+	Addr     string `yaml:"addr"`
+	PoolSize int    `yaml:"poolSize"`
 }
 
 type ResolverServer struct {

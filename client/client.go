@@ -34,7 +34,7 @@ func NewClient(ctx context.Context) (c *Client, err error) {
 	}
 
 	// new proxy server manager
-	forwardManger, err := NewForwardManger(ctx, cfg.Servers, tlsCfg, cfg.PoolSize)
+	forwardManger, err := NewForwardManger(ctx, cfg.Servers, tlsCfg)
 	if err != nil {
 		return
 	}

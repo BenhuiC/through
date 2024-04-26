@@ -9,3 +9,7 @@ const (
 	ForwardTypeReject = "reject"
 	ForwardTypeDirect = "direct"
 )
+
+const (
+	DefaultPoolSize = 10
+)

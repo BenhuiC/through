@@ -30,7 +30,7 @@ type ForwardManger struct {
 	forwardClients map[string]Forward
 }
 
-func NewForwardManger(ctx context.Context, server []config.ProxyServer, tlsCfg *tls.Config, poolSize int) (f *ForwardManger, err error) {
+func NewForwardManger(ctx context.Context, server []config.ProxyServer, tlsCfg *tls.Config) (f *ForwardManger, err error) {
 	f = &ForwardManger{forwardClients: map[string]Forward{}}
 	if len(server) == 0 {
 		err = errors.New("server config must more then zero")
@@ -46,9 +46,9 @@ func NewForwardManger(ctx context.Context, server []config.ProxyServer, tlsCfg *
 		}
 		var forwardCli Forward
 		if c.Net == constant.ServerTypeGrpc {
-			forwardCli = NewGrpcForwardClient(ctx, c.Net, c.Addr, tlsCfg)
+			forwardCli = NewGrpcForwardClient(ctx, c.Net, c.Addr, c.PoolSize, tlsCfg)
 		} else {
-			forwardCli = NewForwardClient(ctx, c.Net, c.Addr, poolSize, tlsCfg)
+			forwardCli = NewForwardClient(ctx, c.Net, c.Addr, c.PoolSize, tlsCfg)
 		}
 		f.forwardClients[c.Name] = forwardCli
 	}
@@ -120,6 +120,9 @@ type ForwardClient struct {
 }
 
 func NewForwardClient(ctx context.Context, network, addr string, poolSize int, tlsCfg *tls.Config) (f *ForwardClient) {
+	if poolSize <= 0 {
+		poolSize = constant.DefaultPoolSize
+	}
 	f = &ForwardClient{
 		net:    network,
 		addr:   addr,
@@ -194,18 +197,21 @@ type GrpcForwardClient struct {
 	logger  *log.Logger
 }
 
-func NewGrpcForwardClient(ctx context.Context, network, addr string, tlsCfg *tls.Config) (f *GrpcForwardClient) {
+func NewGrpcForwardClient(ctx context.Context, network, addr string, poolSize int, tlsCfg *tls.Config) (f *GrpcForwardClient) {
 	f = &GrpcForwardClient{
 		net:    network,
 		addr:   addr,
 		logger: log.NewLogger(zap.AddCallerSkip(1)).With("type", "forwardClient").With("network", network).With("address", addr),
 	}
 	var kacp = keepalive.ClientParameters{
-		Time:                30 * time.Second,
+		Time:                time.Minute,
 		Timeout:             3 * time.Second,
 		PermitWithoutStream: true,
 	}
-	for i := 0; i < 10; i++ {
+	if poolSize <= 0 {
+		poolSize = constant.DefaultPoolSize
+	}
+	for i := 0; i < poolSize; i++ {
 		conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(credentials.NewTLS(tlsCfg)), grpc.WithKeepaliveParams(kacp))
 		if err != nil {
 			panic(err)

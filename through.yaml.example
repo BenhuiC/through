@@ -14,7 +14,6 @@ client:
   httpAddr: ":18888"
   privateKey: "cert/client.key"
   crtFile: "cert/client.crt"
-  poolSize: 10
   resolvers:
     - dot: "223.6.6.6"
     - dot: "dns.pub"
@@ -23,6 +22,7 @@ client:
     - name: "local"
       addr: "127.0.0.1:8888"
       net: "tcp"
+      poolSize: 10
   rules:
     - "host-suffix: ad.com, reject"
     - "host-match: cn, direct"
