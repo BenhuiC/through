@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"sync"
 	"through/config"
-	"through/log"
+	"through/pkg/log"
 	"through/util"
 )
 

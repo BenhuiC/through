@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 	"through/config"
-	"through/log"
+	"through/pkg/log"
 
 	"github.com/spf13/cobra"
 )

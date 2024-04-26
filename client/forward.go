@@ -7,12 +7,15 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/keepalive"
 	"io"
+	"math/rand"
 	"net"
 	"net/http"
 	"through/config"
-	"through/log"
-	"through/proto"
+	"through/pkg/constant"
+	"through/pkg/log"
+	"through/pkg/proto"
 	"through/util"
 	"time"
 )
@@ -34,15 +37,15 @@ func NewForwardManger(ctx context.Context, server []config.ProxyServer, tlsCfg *
 		return
 	}
 
-	f.forwardClients["reject"] = &RejectClient{}
-	f.forwardClients["direct"] = &DirectClient{}
+	f.forwardClients[constant.ForwardTypeReject] = &RejectClient{}
+	f.forwardClients[constant.ForwardTypeDirect] = &DirectClient{}
 
 	for _, c := range server {
 		if _, ok := f.forwardClients[c.Name]; ok {
 			continue
 		}
 		var forwardCli Forward
-		if c.Net == "grpc" {
+		if c.Net == constant.ServerTypeGrpc {
 			forwardCli = NewGrpcForwardClient(ctx, c.Net, c.Addr, tlsCfg)
 		} else {
 			forwardCli = NewForwardClient(ctx, c.Net, c.Addr, poolSize, tlsCfg)
@@ -187,7 +190,7 @@ type GrpcForwardClient struct {
 	net     string
 	addr    string
 	client  *http.Client
-	grpcCli proto.ThroughClient
+	grpcCli []proto.ThroughClient
 	logger  *log.Logger
 }
 
@@ -197,11 +200,18 @@ func NewGrpcForwardClient(ctx context.Context, network, addr string, tlsCfg *tls
 		addr:   addr,
 		logger: log.NewLogger(zap.AddCallerSkip(1)).With("type", "forwardClient").With("network", network).With("address", addr),
 	}
-	conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(credentials.NewTLS(tlsCfg)))
-	if err != nil {
-		panic(err)
+	var kacp = keepalive.ClientParameters{
+		Time:                30 * time.Second,
+		Timeout:             3 * time.Second,
+		PermitWithoutStream: true,
 	}
-	f.grpcCli = proto.NewThroughClient(conn)
+	for i := 0; i < 10; i++ {
+		conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(credentials.NewTLS(tlsCfg)), grpc.WithKeepaliveParams(kacp))
+		if err != nil {
+			panic(err)
+		}
+		f.grpcCli = append(f.grpcCli, proto.NewThroughClient(conn))
+	}
 	f.client = &http.Client{
 		Transport: &http.Transport{
 			DialContext: f.dialContext,
@@ -235,7 +245,9 @@ func (f *GrpcForwardClient) Connect(conn net.Conn, meta *proto.Meta) {
 }
 
 func (f *GrpcForwardClient) dialContext(ctx context.Context, network, addr string) (conn net.Conn, err error) {
-	stream, err := f.grpcCli.Forward(ctx)
+	idx := rand.Intn(len(f.grpcCli))
+	grpcCli := f.grpcCli[idx]
+	stream, err := grpcCli.Forward(ctx)
 	if err != nil {
 		log.Errorf("client forward error: %v", err)
 		return

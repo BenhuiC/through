@@ -6,13 +6,15 @@ import (
 	"errors"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/keepalive"
 	"io"
 	"net"
 	"sync"
 	"through/config"
-	"through/log"
-	"through/proto"
+	"through/pkg/log"
+	"through/pkg/proto"
 	"through/util"
+	"time"
 )
 
 type Server struct {
@@ -45,26 +47,28 @@ func (s *Server) Start() (err error) {
 
 	cfg := config.Server
 	// raw tcp
-	tcpListener, err := tls.Listen("tcp", cfg.TcpAddr, s.tlsCfg)
-	if err != nil {
-		log.Infof("tcp listener error: %v", err)
-		return
+	if cfg.TcpAddr != "" {
+		s.tcpListener, err = tls.Listen("tcp", cfg.TcpAddr, s.tlsCfg)
+		if err != nil {
+			log.Infof("tcp listener error: %v", err)
+			return
+		}
+		log.Infof("tcp server listen at %v", cfg.TcpAddr)
+		s.wg.Add(1)
+		go s.listenTcp()
 	}
-	s.tcpListener = tcpListener
-	log.Infof("tcp server listen at %v", cfg.TcpAddr)
-	s.wg.Add(1)
-	go s.listenTcp()
 
 	// grpc
-	grpcListener, err := tls.Listen("tcp", cfg.GrpcAddr, s.tlsCfg)
-	if err != nil {
-		log.Infof("grpc listener error: %v", err)
-		return
+	if cfg.GrpcAddr != "" {
+		s.grpcListener, err = tls.Listen("tcp", cfg.GrpcAddr, s.tlsCfg)
+		if err != nil {
+			log.Infof("grpc listener error: %v", err)
+			return
+		}
+		log.Infof("grpc server listen at %v", cfg.GrpcAddr)
+		s.wg.Add(1)
+		go s.listenGrpc()
 	}
-	s.grpcListener = grpcListener
-	log.Infof("grpc server listen at %v", cfg.GrpcAddr)
-	s.wg.Add(1)
-	go s.listenGrpc()
 
 	<-s.ctx.Done()
 	return nil
@@ -126,7 +130,14 @@ func (s *Server) listenTcp() {
 
 func (s *Server) listenGrpc() {
 	defer s.wg.Done()
-	server := grpc.NewServer()
+	var kaep = keepalive.EnforcementPolicy{
+		PermitWithoutStream: true, // Allow pings even when there are no active streams
+	}
+	var kasp = keepalive.ServerParameters{
+		Time:    30 * time.Second,
+		Timeout: 3 * time.Second,
+	}
+	server := grpc.NewServer(grpc.KeepaliveEnforcementPolicy(kaep), grpc.KeepaliveParams(kasp))
 	proto.RegisterThroughServer(server, s)
 	err := server.Serve(s.grpcListener)
 	if err != nil {

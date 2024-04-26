@@ -8,8 +8,8 @@ import (
 	"net"
 	"sync"
 	"sync/atomic"
-	"through/log"
-	"through/proto"
+	"through/pkg/log"
+	"through/pkg/proto"
 	"time"
 )
 

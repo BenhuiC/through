@@ -8,8 +8,8 @@ import (
 	"io"
 	"net"
 	"strconv"
-	"through/log"
-	"through/proto"
+	"through/pkg/log"
+	"through/pkg/proto"
 )
 
 const (

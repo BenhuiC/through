@@ -9,7 +9,7 @@ import (
 	"strings"
 	"sync"
 	"through/config"
-	"through/log"
+	"through/pkg/log"
 	"through/util"
 	"time"
 )

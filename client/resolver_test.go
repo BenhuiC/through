@@ -5,7 +5,7 @@ import (
 	"sync"
 	"testing"
 	"through/config"
-	"through/log"
+	"through/pkg/log"
 	"time"
 )
 

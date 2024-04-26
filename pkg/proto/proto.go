@@ -4,7 +4,7 @@ import (
 	"encoding/binary"
 	"github.com/golang/protobuf/proto"
 	"io"
-	"through/log"
+	"through/pkg/log"
 )
 
 // ReadMeta read data from reader and unmarshal

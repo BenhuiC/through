@@ -3,8 +3,8 @@ package client
 import (
 	"context"
 	"net/http"
-	"through/log"
-	"through/proto"
+	"through/pkg/log"
+	"through/pkg/proto"
 )
 
 // HttpProxy http/https proxy

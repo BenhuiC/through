@@ -5,7 +5,7 @@ import (
 	"os"
 	"os/signal"
 	"through/client"
-	"through/log"
+	"through/pkg/log"
 	"time"
 
 	"github.com/spf13/cobra"

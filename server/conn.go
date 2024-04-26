@@ -4,8 +4,8 @@ import (
 	"context"
 	"net"
 	"sync"
-	"through/log"
-	"through/proto"
+	"through/pkg/log"
+	proto "through/pkg/proto"
 	"through/util"
 	"time"
 )
