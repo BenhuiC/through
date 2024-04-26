@@ -131,6 +131,7 @@ func (s *Server) listenTcp() {
 func (s *Server) listenGrpc() {
 	defer s.wg.Done()
 	var kaep = keepalive.EnforcementPolicy{
+		MinTime:             30 * time.Second,
 		PermitWithoutStream: true, // Allow pings even when there are no active streams
 	}
 	var kasp = keepalive.ServerParameters{
