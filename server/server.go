@@ -6,6 +6,7 @@ import (
 	"errors"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/keepalive"
 	"io"
 	"net"
 	"sync"
@@ -13,6 +14,7 @@ import (
 	"through/pkg/log"
 	"through/pkg/proto"
 	"through/util"
+	"time"
 )
 
 type Server struct {
@@ -128,7 +130,14 @@ func (s *Server) listenTcp() {
 
 func (s *Server) listenGrpc() {
 	defer s.wg.Done()
-	server := grpc.NewServer()
+	var kaep = keepalive.EnforcementPolicy{
+		PermitWithoutStream: true, // Allow pings even when there are no active streams
+	}
+	var kasp = keepalive.ServerParameters{
+		Time:    30 * time.Second,
+		Timeout: 3 * time.Second,
+	}
+	server := grpc.NewServer(grpc.KeepaliveEnforcementPolicy(kaep), grpc.KeepaliveParams(kasp))
 	proto.RegisterThroughServer(server, s)
 	err := server.Serve(s.grpcListener)
 	if err != nil {
@@ -138,11 +147,15 @@ func (s *Server) listenGrpc() {
 
 func (s *Server) Stop() {
 	log.Infof("server stopping")
-	if err := s.tcpListener.Close(); err != nil {
-		log.Warnf("close tcp listener error: %v", err)
+	if s.tcpListener != nil {
+		if err := s.tcpListener.Close(); err != nil {
+			log.Warnf("close tcp listener error: %v", err)
+		}
 	}
-	if err := s.grpcListener.Close(); err != nil {
-		log.Warnf("close grcp listener error: %v", err)
+	if s.grpcListener != nil {
+		if err := s.grpcListener.Close(); err != nil {
+			log.Warnf("close grcp listener error: %v", err)
+		}
 	}
 	s.wg.Wait()
 }
