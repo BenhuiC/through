@@ -11,7 +11,7 @@ import (
 
 func TestMain(m *testing.M) {
 	config.Common = &config.CommonCfg{
-		Env:     "dev",
+		Env:     "prod",
 		LogFile: "",
 	}
 	if err := log.Init(); err != nil {
