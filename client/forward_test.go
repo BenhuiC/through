@@ -2,9 +2,11 @@ package client
 
 import (
 	"context"
-	"fmt"
+	"encoding/json"
 	"io"
 	"net/http"
+	"os"
+	"sync"
 	"testing"
 	"through/util"
 	"time"
@@ -18,28 +20,50 @@ func TestForwardClient_Connect(t *testing.T) {
 	ctx := context.Background()
 	forwardCli := NewForwardClient(ctx, "tcp", "xxx", 10, tlsCfg)
 
-	requestCnt := 30
-	var totalCost int64
-	for i := 0; i < requestCnt; i++ {
-		req, err := http.NewRequest(http.MethodGet, "https://google.com", nil)
-		if err != nil {
-			t.Fatal(err)
+	wg := sync.WaitGroup{}
+	requests := loadHttps()
+	reqChan := make(chan *TestHttp, 10)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for i := range requests {
+			reqChan <- &requests[i]
 		}
-		st := time.Now()
-		resp, err := forwardCli.client.Do(req)
-		totalCost += time.Since(st).Milliseconds()
-		if err != nil {
-			t.Fatal(err)
-		}
-		if resp.StatusCode != 200 {
-			resp.Body.Close()
-			t.Fatal(fmt.Sprintf("error response with code %d", resp.StatusCode))
-		}
-		_, _ = io.Copy(io.Discard, resp.Body)
-		resp.Body.Close()
+		close(reqChan)
+	}()
+
+	curr := 10
+	for i := 0; i < curr; i++ {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			var totalCost int64
+			var reqCnt int
+			for {
+				req := <-reqChan
+				if req == nil {
+					break
+				}
+				httpReq, err := http.NewRequest(req.Method, req.Url, nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				st := time.Now()
+				resp, err := forwardCli.client.Do(httpReq)
+				cost := time.Since(st).Milliseconds()
+				reqCnt++
+				totalCost += cost
+				if err != nil {
+					t.Fatal(err)
+				}
+				_, _ = io.Copy(io.Discard, resp.Body)
+				resp.Body.Close()
+			}
+			t.Logf("goroutine %d do %d request totalCost cost %d Milliseconds, avg %d Milliseconds", idx, reqCnt, totalCost, totalCost/int64(reqCnt))
+		}(i)
 	}
 
-	t.Logf("%d request totalCost cost %d Milliseconds, avg %d Milliseconds", requestCnt, totalCost, totalCost/int64(requestCnt))
+	wg.Wait()
 }
 
 func TestGrpcForwardClient_Connect(t *testing.T) {
@@ -50,26 +74,67 @@ func TestGrpcForwardClient_Connect(t *testing.T) {
 	ctx := context.Background()
 	forwardCli := NewGrpcForwardClient(ctx, "tcp", "xxx", 10, tlsCfg)
 
-	requestCnt := 30
-	var totalCost int64
-	for i := 0; i < requestCnt; i++ {
-		req, err := http.NewRequest(http.MethodGet, "https://google.com", nil)
-		if err != nil {
-			t.Fatal(err)
+	wg := sync.WaitGroup{}
+	requests := loadHttps()
+	reqChan := make(chan *TestHttp, 10)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for i := range requests {
+			reqChan <- &requests[i]
 		}
-		st := time.Now()
-		resp, err := forwardCli.client.Do(req)
-		totalCost += time.Since(st).Milliseconds()
-		if err != nil {
-			t.Fatal(err)
-		}
-		if resp.StatusCode != 200 {
-			resp.Body.Close()
-			t.Fatal(fmt.Sprintf("error response with code %d", resp.StatusCode))
-		}
-		_, _ = io.Copy(io.Discard, resp.Body)
-		resp.Body.Close()
+		close(reqChan)
+	}()
+
+	curr := 10
+	for i := 0; i < curr; i++ {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			var totalCost int64
+			var reqCnt int
+			for {
+				req := <-reqChan
+				if req == nil {
+					break
+				}
+				httpReq, err := http.NewRequest(req.Method, req.Url, nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				st := time.Now()
+				resp, err := forwardCli.client.Do(httpReq)
+				cost := time.Since(st).Milliseconds()
+				reqCnt++
+				totalCost += cost
+				if err != nil {
+					t.Fatal(err)
+				}
+				_, _ = io.Copy(io.Discard, resp.Body)
+				resp.Body.Close()
+			}
+			t.Logf("goroutine %d do %d request totalCost cost %d Milliseconds, avg %d Milliseconds", idx, reqCnt, totalCost, totalCost/int64(reqCnt))
+		}(i)
 	}
 
-	t.Logf("%d request totalCost cost %d Milliseconds, avg %d Milliseconds", requestCnt, totalCost, totalCost/int64(requestCnt))
+	wg.Wait()
+}
+
+type TestHttp struct {
+	Method string `json:"method"`
+	Url    string `json:"url"`
+}
+
+func loadHttps() []TestHttp {
+	res := make([]TestHttp, 0)
+	// your path
+	data, err := os.ReadFile("../.tmp/test_1000.json")
+	if err != nil {
+		panic(err)
+	}
+	if err = json.Unmarshal(data, &res); err != nil {
+		panic(err)
+	}
+
+	return res
 }

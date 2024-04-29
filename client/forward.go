@@ -201,7 +201,7 @@ func NewGrpcForwardClient(ctx context.Context, network, addr string, poolSize in
 	f = &GrpcForwardClient{
 		net:    network,
 		addr:   addr,
-		logger: log.NewLogger(zap.AddCallerSkip(1)).With("type", "forwardClient").With("network", network).With("address", addr),
+		logger: log.NewLogger(zap.AddCallerSkip(1)).With("type", "grpcForwardClient").With("network", network).With("address", addr),
 	}
 	var kacp = keepalive.ClientParameters{
 		Time:                time.Minute,
@@ -252,6 +252,7 @@ func (f *GrpcForwardClient) Connect(conn net.Conn, meta *proto.Meta) {
 
 func (f *GrpcForwardClient) dialContext(ctx context.Context, network, addr string) (conn net.Conn, err error) {
 	idx := rand.Intn(len(f.grpcCli))
+	f.logger.Debugf("use client %d", idx)
 	grpcCli := f.grpcCli[idx]
 	stream, err := grpcCli.Forward(ctx)
 	if err != nil {
