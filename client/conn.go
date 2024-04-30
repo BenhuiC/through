@@ -24,6 +24,7 @@ type ConnectionPool struct {
 	logger  *log.Logger
 
 	lc          sync.Mutex
+	once        sync.Once
 	wg          sync.WaitGroup
 	producerCnt atomic.Int32
 }
@@ -139,7 +140,9 @@ func (p *ConnectionPool) producer() {
 		select {
 		case <-p.ctx.Done():
 			p.logger.Debug("connection producer stop")
-			close(p.pool)
+			p.once.Do(func() {
+				close(p.pool)
+			})
 			return
 		case p.pool <- c:
 			p.logger.Debug("put one connect")
