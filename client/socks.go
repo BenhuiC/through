@@ -44,14 +44,20 @@ var (
 
 // SocksProxy socks5 proxy
 type SocksProxy struct {
-	forwardManager *ForwardManger
-	ruleManager    *RuleManager
+	forwardManager         *ForwardManger
+	ruleManager            *RuleManager
+	connectionAuthenticate ConnectionAuth
+}
+
+type ConnectionAuth interface {
+	Auth(conn net.Conn) error
 }
 
 func NewSocksProxy(ctx context.Context, forwards *ForwardManger, rules *RuleManager) (s *SocksProxy) {
 	return &SocksProxy{
-		forwardManager: forwards,
-		ruleManager:    rules,
+		forwardManager:         forwards,
+		ruleManager:            rules,
+		connectionAuthenticate: &Anonymous{},
 	}
 }
 
@@ -78,60 +84,10 @@ func (s *SocksProxy) Serve(conn net.Conn) {
 }
 
 func (s *SocksProxy) readMetaFromConn(conn net.Conn) (meta *proto.Meta, err error) {
-	if err = s.auth(conn); err != nil {
+	if err = s.connectionAuthenticate.Auth(conn); err != nil {
 		return
 	}
 	return s.connect(conn)
-}
-
-func (s *SocksProxy) auth(conn net.Conn) (err error) {
-	/*
-		+----+----------+----------+
-		|VER | NMETHODS | METHODS  |
-		+----+----------+----------+
-		| 1  |    1     | 1 to 255 |
-		+----+----------+----------+
-	*/
-	buf := make([]byte, 256)
-
-	// 读取 VER 和 NMETHODS
-	_, err = io.ReadFull(conn, buf[:2])
-	if err != nil {
-		return
-	}
-
-	ver, nMethods := buf[0], buf[1]
-	if ver != Socks5Version {
-		err = UnSupportVersion
-		return
-	}
-
-	// 读取 METHODS 列表
-	_, err = io.ReadFull(conn, buf[:nMethods])
-	if err != nil {
-		return
-	}
-
-	// write response
-	/*
-		+----+--------+
-		|VER | METHOD |
-		+----+--------+
-		| 1  |   1    |
-		+----+--------+
-	*/
-	_, err = conn.Write([]byte{Socks5Version, SocksNoAuthentication})
-
-	// todo support auth
-	/*
-		+----+------+----------+------+----------+
-		|VER | ULEN |  UNAME   | PLEN |  PASSWD  |
-		+----+------+----------+------+----------+
-		| 1  |  1   | 1 to 255 |  1   | 1 to 255 |
-		+----+------+----------+------+----------+
-	*/
-
-	return
 }
 
 func (s *SocksProxy) connect(conn net.Conn) (meta *proto.Meta, err error) {
@@ -283,4 +239,47 @@ func (s *SocksProxy) parseAddr(str string) (addr []byte) {
 	addr[len(addr)-2], addr[len(addr)-1] = byte(portnum>>8), byte(portnum)
 
 	return addr
+}
+
+type Anonymous struct{}
+
+func (a *Anonymous) Auth(conn net.Conn) (err error) {
+	/*
+		+----+----------+----------+
+		|VER | NMETHODS | METHODS  |
+		+----+----------+----------+
+		| 1  |    1     | 1 to 255 |
+		+----+----------+----------+
+	*/
+	buf := make([]byte, 256)
+
+	// 读取 VER 和 NMETHODS
+	_, err = io.ReadFull(conn, buf[:2])
+	if err != nil {
+		return
+	}
+
+	ver, nMethods := buf[0], buf[1]
+	if ver != Socks5Version {
+		err = UnSupportVersion
+		return
+	}
+
+	// 读取 METHODS 列表
+	_, err = io.ReadFull(conn, buf[:nMethods])
+	if err != nil {
+		return
+	}
+
+	// write response
+	/*
+		+----+--------+
+		|VER | METHOD |
+		+----+--------+
+		| 1  |   1    |
+		+----+--------+
+	*/
+	_, err = conn.Write([]byte{Socks5Version, SocksNoAuthentication})
+
+	return
 }
