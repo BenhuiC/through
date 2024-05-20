@@ -19,14 +19,14 @@ var serverCmd = &cobra.Command{
 		ctx, stop := signal.NotifyContext(context.Background(), os.Kill, os.Interrupt)
 		defer stop()
 
-		s, err := server.NewServer(ctx)
+		s, err := server.NewServer()
 		if err != nil {
 			log.Errorf("new server error: %v", err)
 			return
 		}
 
 		// start server
-		if err := s.Start(); err != nil {
+		if err := s.Start(ctx); err != nil {
 			log.Errorf("server start error: %v", err)
 			return
 		}
