@@ -1,23 +1,25 @@
 module through
 
-go 1.20
+go 1.22.2
 
 require (
 	github.com/golang/protobuf v1.5.3
+	github.com/google/go-github/v62 v62.0.0
+	github.com/jasonlvhit/gocron v0.0.1
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/ncruces/go-dns v1.2.5
 	github.com/oschwald/geoip2-golang v1.9.0
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.18.2
-	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8
 	go.uber.org/zap v1.26.0
 	golang.org/x/sync v0.5.0
 	google.golang.org/grpc v1.59.0
-	google.golang.org/protobuf v1.31.0
+	google.golang.org/protobuf v1.34.1
 )
 
 require (
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
+	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect

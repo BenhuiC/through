@@ -28,6 +28,7 @@ func TestRuleManager_Get(t *testing.T) {
 		"host-suffix: ad.com, reject",
 		"host-prefix: ad.com, reject",
 		"host-match: cdn, direct",
+		"geo: PRIVATE, direct",
 		"geo: CN, direct",
 		"host-regexp: www\\.[a-zA-Z]+\\.com, direct",
 		"ip-cidr: 127.0.0.1/8, direct",
@@ -83,6 +84,13 @@ func TestRuleManager_Get(t *testing.T) {
 			name: "6",
 			args: args{
 				host: "tool.lu",
+			},
+			wantServer: "direct",
+		},
+		{
+			name: "7",
+			args: args{
+				host: "10.20.107.80",
 			},
 			wantServer: "direct",
 		},

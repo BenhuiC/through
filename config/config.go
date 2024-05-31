@@ -29,6 +29,7 @@ type ClientCfg struct {
 	SocksAddr  string           `yaml:"socksAddr"`
 	PrivateKey string           `yaml:"privateKey"`
 	CrtFile    string           `yaml:"crtFile"`
+	GeoIPFile  string           `yaml:"geoIPFile"`
 	Resolvers  []ResolverServer `yaml:"resolvers"`
 	Servers    []ProxyServer    `yaml:"servers"`
 	Rules      []string         `yaml:"rules"`

@@ -9,8 +9,8 @@ import (
 	"strings"
 	"sync"
 	"through/config"
+	"through/pkg"
 	"through/pkg/log"
-	"through/util"
 	"time"
 )
 
@@ -132,7 +132,7 @@ func (s *ResolverManager) doResolver(host string) (ip net.IP) {
 // Country get the country where the host located at, return IsoCode
 func (s *ResolverManager) Country(host string) (c string) {
 	ipAddr := s.Lookup(host)
-	c = util.Country(ipAddr)
+	c = pkg.Country(ipAddr)
 	return
 }
 

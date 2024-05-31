@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"sync"
 	"through/config"
+	"through/pkg"
 	"through/pkg/log"
 	"through/util"
 )
@@ -30,6 +31,10 @@ func NewClient(ctx context.Context) (c *Client, err error) {
 	var tlsCfg *tls.Config
 	tlsCfg, err = util.LoadTlsConfig(cfg.PrivateKey, cfg.CrtFile, "", true)
 	if err != nil {
+		return
+	}
+
+	if err = pkg.Init(ctx, cfg.GeoIPFile); err != nil {
 		return
 	}
 
