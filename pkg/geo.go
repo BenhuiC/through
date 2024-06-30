@@ -23,7 +23,7 @@ const (
 
 var db *Geo
 
-func Init(ctx context.Context, filepath string) (err error) {
+func InitGeo(ctx context.Context, filepath string) (err error) {
 	db, err = NewGeo(ctx, filepath)
 	return
 }
@@ -106,6 +106,12 @@ func (g *Geo) DownloadGeoDBFile() (err error) {
 		return err
 	}
 	defer resp.Body.Close()
+
+	fileInfo, err := os.Stat(g.filepath)
+	if err == nil && fileInfo.Size() > int64(0) {
+		_ = os.Remove(g.filepath)
+	}
+
 	file, err := os.Create(g.filepath)
 	if err != nil {
 		log.Infof("failed to open GeoDB file: %v", err)

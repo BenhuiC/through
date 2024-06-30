@@ -34,7 +34,7 @@ func NewClient(ctx context.Context) (c *Client, err error) {
 		return
 	}
 
-	if err = pkg.Init(ctx, cfg.GeoIPFile); err != nil {
+	if err = pkg.InitGeo(ctx, cfg.GeoIPFile); err != nil {
 		return
 	}
 

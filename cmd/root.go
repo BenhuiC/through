@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"through/config"
+	"through/pkg"
 	"through/pkg/log"
 
 	"github.com/spf13/cobra"
@@ -47,4 +48,5 @@ func Init() {
 		fmt.Println("init log error:", err)
 		return
 	}
+	pkg.InitMetrics()
 }

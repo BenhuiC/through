@@ -8,6 +8,7 @@ import (
 	"net"
 	"sync"
 	"sync/atomic"
+	"through/pkg"
 	"through/pkg/log"
 	"through/pkg/proto"
 	"time"
@@ -202,6 +203,7 @@ func (g *GrpcConnection) Read(p []byte) (n int, err error) {
 	defer g.readLock.Unlock()
 	defer func() {
 		log.Debugf("read from grpc connection: %v", n)
+		pkg.Metrics.Download(uint64(n))
 	}()
 
 	if g.readOffset == 0 {
@@ -230,6 +232,7 @@ func (g *GrpcConnection) Write(p []byte) (n int, err error) {
 	g.writeLock.Lock()
 	defer g.writeLock.Unlock()
 	log.Debugf("write data to grpc: %v", len(p))
+	pkg.Metrics.Upload(uint64(n))
 
 	g.responseLock.Lock()
 	err = g.stream.Send(&proto.ForwardRequest{Data: p})

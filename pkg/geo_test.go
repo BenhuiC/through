@@ -18,7 +18,7 @@ func TestMain(m *testing.M) {
 	if err := log.Init(); err != nil {
 		panic(err)
 	}
-	if err := Init(context.Background(), "./Country.mmdb"); err != nil {
+	if err := InitGeo(context.Background(), "../Country.mmdb"); err != nil {
 		panic(err)
 	}
 	os.Exit(m.Run())
